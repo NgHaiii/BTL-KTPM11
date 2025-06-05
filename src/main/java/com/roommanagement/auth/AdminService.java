@@ -453,6 +453,7 @@ loadBills.run();
     );
     bp.setCenter(notifyPane);
 });
+// Nút đăng xuất
         btnLogout.setOnAction(e -> showAuthPane());
 
         Scene scene = new Scene(bp, 800, 500);
@@ -477,13 +478,52 @@ loadBills.run();
         ex.printStackTrace();
     }
 }
+private void deleteTenant(TenantEntry tenant) {
+    try (Connection conn = DatabaseManager.connect()) {
+        // Lấy room_id của tenant này
+        int roomId = -1;
+        try (PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT room_id FROM tenants WHERE name = ? AND phone = ? AND address = ?")) {
+            pstmt.setString(1, tenant.getName());
+            pstmt.setString(2, tenant.getPhone());
+            pstmt.setString(3, tenant.getAddress());
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                roomId = rs.getInt("room_id");
+            }
+        }
+        // Xóa tenant
+        try (PreparedStatement pstmt = conn.prepareStatement(
+                "DELETE FROM tenants WHERE name = ? AND phone = ? AND address = ?")) {
+            pstmt.setString(1, tenant.getName());
+            pstmt.setString(2, tenant.getPhone());
+            pstmt.setString(3, tenant.getAddress());
+            pstmt.executeUpdate();
+        }
+        // Cập nhật trạng thái phòng về "Trống"
+        if (roomId != -1) {
+            try (PreparedStatement pstmt = conn.prepareStatement(
+                    "UPDATE rooms SET status = 'Trống' WHERE id = ?")) {
+                pstmt.setInt(1, roomId);
+                pstmt.executeUpdate();
+            }
+        }
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+    refreshTenantTable();
+    refreshRoomTable();
+}
     private Pane getTenantManagementPane() {
     VBox tenantPane = new VBox(10);
     tenantPane.setPadding(new Insets(10));
 
     HBox formBox = new HBox(10);
-    TextField txtRoomId = new TextField();
-    txtRoomId.setPromptText("Số phòng thuê");
+
+    // ComboBox chọn phòng (theo tên phòng)
+    ComboBox<RoomEntry> cbRoom = new ComboBox<>(roomList);
+    cbRoom.setPromptText("Chọn phòng");
+
     TextField txtName = new TextField();
     txtName.setPromptText("Tên người thuê");
     TextField txtPhone = new TextField();
@@ -492,7 +532,7 @@ loadBills.run();
     txtAddress.setPromptText("Địa chỉ");
     Button btnAdd = new Button("Thêm");
     Label lblStatus = new Label();
-    formBox.getChildren().addAll(txtRoomId, txtName, txtPhone, txtAddress, btnAdd, lblStatus);
+    formBox.getChildren().addAll(cbRoom, txtName, txtPhone, txtAddress, btnAdd, lblStatus);
 
     TableView<TenantEntry> table = new TableView<>();
     table.setPrefHeight(300);
@@ -500,39 +540,92 @@ loadBills.run();
 
     TableColumn<TenantEntry, String> colName = new TableColumn<>("Tên");
     colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-    colName.setPrefWidth(180); // Thêm dòng này
+    colName.setPrefWidth(180);
 
     TableColumn<TenantEntry, String> colPhone = new TableColumn<>("SĐT");
     colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
-    colPhone.setPrefWidth(120); // Thêm dòng này
+    colPhone.setPrefWidth(120);
 
     TableColumn<TenantEntry, String> colAddress = new TableColumn<>("Địa chỉ");
     colAddress.setCellValueFactory(new PropertyValueFactory<>("address"));
-    colAddress.setPrefWidth(180); // Thêm dòng này
+    colAddress.setPrefWidth(180);
+    // Thêm cột Xóa
+    TableColumn<TenantEntry, Void> colDelete = new TableColumn<>("Xóa");
+colDelete.setPrefWidth(60);
+colDelete.setCellFactory(param -> new TableCell<>() {
+    private final Button btnDelete = new Button("Xóa");
+
+    {
+        btnDelete.setOnAction(event -> {
+            TenantEntry tenant = getTableView().getItems().get(getIndex());
+            deleteTenant(tenant);
+        });
+    }
+
+    @Override
+    protected void updateItem(Void item, boolean empty) {
+        super.updateItem(item, empty);
+        if (empty) {
+            setGraphic(null);
+        } else {
+            setGraphic(btnDelete);
+        }
+    }
+});
+table.getColumns().add(colDelete);
 
     table.getColumns().addAll(colName, colPhone, colAddress);
 
     tenantList.setAll(loadTenantData());
     table.setItems(tenantList);
-// Xử lý sự kiện nút Thêm
-     btnAdd.setOnAction(e -> {
-    String roomIdStr = txtRoomId.getText().trim();
+
+    btnAdd.setOnAction(e -> {
+    RoomEntry selectedRoom = cbRoom.getValue();
     String name = txtName.getText().trim();
     String phone = txtPhone.getText().trim();
     String address = txtAddress.getText().trim();
-    if (roomIdStr.isEmpty() || name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
+
+    if (selectedRoom == null || name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
         lblStatus.setText("Vui lòng nhập đầy đủ thông tin.");
     } else {
-        int roomId = Integer.parseInt(roomIdStr);
+        // Lấy room_id từ tên phòng
+        int roomId = -1;
+        try (Connection conn = DatabaseManager.connect();
+             PreparedStatement pstmt = conn.prepareStatement("SELECT id FROM rooms WHERE name = ? LIMIT 1")) {
+            pstmt.setString(1, selectedRoom.getName());
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                roomId = rs.getInt("id");
+            }
+        } catch (Exception ex) {
+            lblStatus.setText("Lỗi khi lấy ID phòng!");
+            return;
+        }
+        if (roomId == -1) {
+            lblStatus.setText("Không tìm thấy phòng!");
+            return;
+        }
         addTenant(roomId, name, phone, address);
+
+        // Cập nhật trạng thái phòng sang "Cho thuê"
+        try (Connection conn = DatabaseManager.connect();
+             PreparedStatement pstmt = conn.prepareStatement("UPDATE rooms SET status = 'Cho thuê' WHERE id = ?")) {
+            pstmt.setInt(1, roomId);
+            pstmt.executeUpdate();
+        } catch (Exception ex) {
+            lblStatus.setText("Lỗi khi cập nhật trạng thái phòng!");
+        }
+
         lblStatus.setText("Đã thêm: " + name);
-        txtRoomId.clear();
+        cbRoom.setValue(null);
         txtName.clear();
         txtPhone.clear();
         txtAddress.clear();
         refreshTenantTable();
+        refreshRoomTable(); // Thêm dòng này để cập nhật lại danh sách phòng
     }
 });
+
     tenantPane.getChildren().clear();
     tenantPane.getChildren().addAll(new Label("Quản Lý Người Thuê"), formBox, table);
     return tenantPane;
@@ -692,8 +785,12 @@ private Pane getRoomManagementPane() {
     public String getSize() { return size.get(); }
     public String getType() { return type.get(); }
     public String getStatus() { return status.get(); }
-}
 
+    @Override
+    public String toString() {
+        return getName(); // Để ComboBox hiển thị tên phòng
+    }
+}
 
     // Đưa BillEntry vào bên trong AdminService
 public static class BillEntry {
