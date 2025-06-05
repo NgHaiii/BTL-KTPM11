@@ -1,5 +1,6 @@
 package com.roommanagement.auth;
 
+// AdminService.java - Quản lý đăng ký, đăng nhập và các chức năng quản trị cho Admin
 import com.roommanagement.database.DatabaseManager;
 import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
@@ -25,9 +26,8 @@ public class AdminService extends Application {
     // ObservableList dùng để lưu trữ dữ liệu hiển thị tại bảng
     private ObservableList<TenantEntry> tenantList = FXCollections.observableArrayList();
     private ObservableList<RoomEntry> roomList = FXCollections.observableArrayList();
-    // ...existing code...
+    // ObservableList cho danh sách hóa đơn
 private ObservableList<BillEntry> billList = FXCollections.observableArrayList();
-// ...existing code...
     
     // Lưu tham chiếu đến Stage chính để dễ chuyển đổi giao diện
     private Stage primaryStage;
@@ -60,7 +60,7 @@ private ObservableList<BillEntry> billList = FXCollections.observableArrayList()
             pstmt.setString(1, username);
             pstmt.setString(2, password);
             ResultSet rs = pstmt.executeQuery();
-            return rs.next();  // Đăng nhập thành công nếu có dòng trả về
+            return rs.next();
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -79,26 +79,27 @@ public void addTenant(int roomId, String name, String phone, String address) {
     } catch (SQLException e) {
         e.printStackTrace();
     }
-}
-    
+}    
     // Thêm phòng: lưu thông tin vào bảng rooms (trường: room_name, status)
-    public void addRoom(String roomName, String status) {
-        try (Connection conn = DatabaseManager.connect()) {
-            String sql = "INSERT INTO rooms (room_name, status) VALUES (?, ?)";
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, roomName);
-            pstmt.setString(2, status);
-            pstmt.executeUpdate();
-            System.out.println("✅ Room added: " + roomName + " (Status: " + status + ")");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+public void addRoom(String name, String size, String type, String status) {
+    try (Connection conn = DatabaseManager.connect()) {
+        String sql = "INSERT INTO rooms (name, size, type, status) VALUES (?, ?, ?, ?)";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, name);
+        pstmt.setString(2, size);
+        pstmt.setString(3, type);
+        pstmt.setString(4, status);
+        pstmt.executeUpdate();
+        System.out.println("Thêm phòng thành công!");
+    } catch (SQLException e) {
+        System.err.println("Lỗi khi thêm phòng: " + e.getMessage());
+        e.printStackTrace();
     }
+}
 
     // ============================
     // 2. PHƯƠNG THỨC LOAD DỮ LIỆU TỪ CSDL
     // ============================
-    
     private List<TenantEntry> loadTenantData() {
         List<TenantEntry> list = new ArrayList<>();
         try (Connection conn = DatabaseManager.connect();
@@ -114,24 +115,27 @@ public void addTenant(int roomId, String name, String phone, String address) {
     }
     
     private List<RoomEntry> loadRoomData() {
-        List<RoomEntry> list = new ArrayList<>();
-        try (Connection conn = DatabaseManager.connect();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT room_name, status FROM rooms")) {
-            while (rs.next()) {
-                list.add(new RoomEntry(rs.getString("room_name"), rs.getString("status")));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+    List<RoomEntry> list = new ArrayList<>();
+    try (Connection conn = DatabaseManager.connect();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery("SELECT name, size, type, status FROM rooms")) {
+        while (rs.next()) {
+            list.add(new RoomEntry(
+                rs.getString("name"),
+                rs.getString("size"),
+                rs.getString("type"),
+                rs.getString("status")
+            ));
         }
-        return list;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
-
+    return list;
+}
     // ============================
     // 3. GIAO DIỆN CHÍNH: ĐĂNG KÍ / ĐĂNG NHẬP, DASHBOARD & MENU CHỨC NĂNG
     // ============================
-    
-    // 3.1. Giao diện đăng ký/đăng nhập (sử dụng TabPane)
+       // 3.1. Giao diện đăng ký/đăng nhập (sử dụng TabPane)
     private void showAuthPane() {
         primaryStage.setTitle("Admin: Đăng Kí / Đăng Nhập");
 
@@ -292,7 +296,7 @@ public void addTenant(int roomId, String name, String phone, String address) {
     txtDesc.setPromptText("Mô tả");
     Button btnAddBill = new Button("Tạo hóa đơn");
     Label lblBillStatus = new Label();
-
+   
     // Hàm nạp lại danh sách hóa đơn từ DB (KHAI BÁO TRƯỚC)
     Runnable loadBills = () -> {
         billList.clear();
@@ -313,48 +317,50 @@ public void addTenant(int roomId, String name, String phone, String address) {
             ex.printStackTrace();
         }
     };
+// Tạo TableView để hiển thị danh sách hóa đơn
+TableView<BillEntry> billTable = new TableView<>(billList);
+billTable.setPrefHeight(200);
 
-    // TableView hiển thị danh sách hóa đơn
-    TableView<BillEntry> billTable = new TableView<>(billList);
-    billTable.setPrefHeight(200);
+TableColumn<BillEntry, String> colTenant = new TableColumn<>("Người thuê");
+colTenant.setCellValueFactory(new PropertyValueFactory<>("tenantName"));
+colTenant.setPrefWidth(150);
 
-    TableColumn<BillEntry, String> colTenant = new TableColumn<>("Người thuê");
-    colTenant.setCellValueFactory(new PropertyValueFactory<>("tenantName"));
+TableColumn<BillEntry, Double> colAmount = new TableColumn<>("Số tiền");
+colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+colAmount.setPrefWidth(100);
 
-    TableColumn<BillEntry, Double> colAmount = new TableColumn<>("Số tiền");
-    colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+TableColumn<BillEntry, String> colDesc = new TableColumn<>("Mô tả");
+colDesc.setCellValueFactory(new PropertyValueFactory<>("description"));
+colDesc.setPrefWidth(200);
 
-    TableColumn<BillEntry, String> colDesc = new TableColumn<>("Mô tả");
-    colDesc.setCellValueFactory(new PropertyValueFactory<>("description"));
+TableColumn<BillEntry, Void> colDelete = new TableColumn<>("Xóa");
+colDelete.setPrefWidth(60);
+colDelete.setCellFactory(param -> new TableCell<>() {
+    private final Button btnDelete = new Button("Xóa");
 
-    // Thêm cột xóa
-    TableColumn<BillEntry, Void> colDelete = new TableColumn<>("Xóa");
-    colDelete.setCellFactory(param -> new TableCell<>() {
-        private final Button btnDelete = new Button("Xóa");
+    {
+        btnDelete.setOnAction(event -> {
+            BillEntry bill = getTableView().getItems().get(getIndex());
+            deleteBill(bill); // Gọi hàm xóa hóa đơn
+            loadBills.run();  // Cập nhật lại bảng
+        });
+    }
 
-        {
-            btnDelete.setOnAction(event -> {
-                BillEntry bill = getTableView().getItems().get(getIndex());
-                deleteBill(bill); // Gọi hàm xóa hóa đơn
-                loadBills.run();  // Cập nhật lại bảng
-            });
+    @Override
+    protected void updateItem(Void item, boolean empty) {
+        super.updateItem(item, empty);
+        if (empty) {
+            setGraphic(null);
+        } else {
+            setGraphic(btnDelete);
         }
+    }
+});
 
-        @Override
-        protected void updateItem(Void item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty) {
-                setGraphic(null);
-            } else {
-                setGraphic(btnDelete);
-            }
-        }
-    });
+billTable.getColumns().addAll(colTenant, colAmount, colDesc, colDelete);
 
-    billTable.getColumns().addAll(colTenant, colAmount, colDesc, colDelete);
-
-    // Nạp dữ liệu hóa đơn lần đầu
-    loadBills.run();
+// Nạp dữ liệu hóa đơn lần đầu
+loadBills.run();
 
     btnAddBill.setOnAction(ev -> {
         String tenant = cbTenant.getValue();
@@ -408,7 +414,7 @@ public void addTenant(int roomId, String name, String phone, String address) {
     );
     bp.setCenter(billPane);
 });
- btnGuiThongBao.setOnAction(e -> {
+      btnGuiThongBao.setOnAction(e -> {
     VBox notifyPane = new VBox(10);
     notifyPane.setPadding(new Insets(10));
     TextField txtTenantName = new TextField();
@@ -461,6 +467,16 @@ public void addTenant(int roomId, String name, String phone, String address) {
     
     // 4.1. Giao diện Quản Lý Người Thuê:
     // Form thêm người thuê kèm TableView hiển thị danh sách người thuê
+    private void deleteRoom(RoomEntry room) {
+    try (Connection conn = DatabaseManager.connect()) {
+        String sql = "DELETE FROM rooms WHERE name = ?";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, room.getName());
+        pstmt.executeUpdate();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+}
     private Pane getTenantManagementPane() {
     VBox tenantPane = new VBox(10);
     tenantPane.setPadding(new Insets(10));
@@ -498,81 +514,120 @@ public void addTenant(int roomId, String name, String phone, String address) {
 
     tenantList.setAll(loadTenantData());
     table.setItems(tenantList);
-
-
-    btnAdd.setOnAction(e -> {
-        String roomIdStr = txtRoomId.getText().trim();
-        String name = txtName.getText().trim();
-        String phone = txtPhone.getText().trim();
-        String address = txtAddress.getText().trim();
-
-        if (roomIdStr.isEmpty() || name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
-            lblStatus.setText("Vui lòng nhập đầy đủ thông tin.");
-        } else {
-            try {
-                int roomId = Integer.parseInt(roomIdStr);
-                addTenant(roomId, name, phone, address);
-                lblStatus.setText("Đã thêm: " + name);
-                txtRoomId.clear();
-                txtName.clear();
-                txtPhone.clear();
-                txtAddress.clear();
-                refreshTenantTable();
-            } catch (Exception ex) {
-                lblStatus.setText("Dữ liệu không hợp lệ!");
-            }
-        }
-    });
-
+// Xử lý sự kiện nút Thêm
+     btnAdd.setOnAction(e -> {
+    String roomIdStr = txtRoomId.getText().trim();
+    String name = txtName.getText().trim();
+    String phone = txtPhone.getText().trim();
+    String address = txtAddress.getText().trim();
+    if (roomIdStr.isEmpty() || name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
+        lblStatus.setText("Vui lòng nhập đầy đủ thông tin.");
+    } else {
+        int roomId = Integer.parseInt(roomIdStr);
+        addTenant(roomId, name, phone, address);
+        lblStatus.setText("Đã thêm: " + name);
+        txtRoomId.clear();
+        txtName.clear();
+        txtPhone.clear();
+        txtAddress.clear();
+        refreshTenantTable();
+    }
+});
     tenantPane.getChildren().clear();
     tenantPane.getChildren().addAll(new Label("Quản Lý Người Thuê"), formBox, table);
     return tenantPane;
 }
     // 4.2. Giao diện Quản Lý Phòng:
     // Form thêm phòng kèm TableView hiển thị danh sách phòng
-    private Pane getRoomManagementPane() {
-        VBox roomPane = new VBox(10);
-        roomPane.setPadding(new Insets(10));
+private Pane getRoomManagementPane() {
+    VBox roomPane = new VBox(10);
+    roomPane.setPadding(new Insets(10));
 
-        // Form nhập thông tin phòng
-        HBox formBox = new HBox(10);
-        TextField txtRoomName = new TextField();
-        txtRoomName.setPromptText("Tên phòng");
-        ComboBox<String> cbStatus = new ComboBox<>();
-        cbStatus.getItems().addAll("Trống", "Cho thuê");
-        cbStatus.setValue("Trống");
-        Button btnAdd = new Button("Thêm");
-        Label lblStatus = new Label();
-        formBox.getChildren().addAll(txtRoomName, cbStatus, btnAdd, lblStatus);
+    // Form nhập thông tin phòng
+    HBox formBox = new HBox(10);
+    TextField txtRoomName = new TextField();
+    txtRoomName.setPromptText("Tên phòng");
+    TextField txtSize = new TextField();
+    txtSize.setPromptText("Kích thước");
+    ComboBox<String> cbType = new ComboBox<>();
+    cbType.getItems().addAll("Đơn", "Thường");
+    cbType.setPromptText("Loại phòng");
+    ComboBox<String> cbStatus = new ComboBox<>();
+    cbStatus.getItems().addAll("Trống", "Cho thuê", "Bảo trì");
+    cbStatus.setPromptText("Tình trạng");
+    Button btnAdd = new Button("Thêm");
+    Label lblStatus = new Label();
+    formBox.getChildren().addAll(txtRoomName, txtSize, cbType, cbStatus, btnAdd, lblStatus);
 
-        // TableView cho danh sách phòng
-        TableView<RoomEntry> table = new TableView<>();
-        TableColumn<RoomEntry, String> colRoomName = new TableColumn<>("Tên phòng");
-        TableColumn<RoomEntry, String> colStatus = new TableColumn<>("Tình trạng");
+    // TableView cho danh sách phòng
+    TableView<RoomEntry> table = new TableView<>();
+    table.setPrefHeight(300);
 
-        colRoomName.setCellValueFactory(new PropertyValueFactory<>("roomName"));
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+    TableColumn<RoomEntry, String> colRoomName = new TableColumn<>("Tên phòng");
+    colRoomName.setCellValueFactory(new PropertyValueFactory<>("name"));
+    colRoomName.setPrefWidth(120);
 
-        table.getColumns().addAll(colRoomName, colStatus);
-        roomList.setAll(loadRoomData());
-        table.setItems(roomList);
+    TableColumn<RoomEntry, String> colSize = new TableColumn<>("Kích thước");
+    colSize.setCellValueFactory(new PropertyValueFactory<>("size"));
+    colSize.setPrefWidth(100);
 
-        btnAdd.setOnAction(e -> {
-            String roomName = txtRoomName.getText().trim();
-            String status = cbStatus.getValue();
-            if (roomName.isEmpty()) {
-                lblStatus.setText("Vui lòng nhập tên phòng.");
-            } else {
-                addRoom(roomName, status);
-                lblStatus.setText("Đã thêm: " + roomName);
-                txtRoomName.clear();
+    TableColumn<RoomEntry, String> colType = new TableColumn<>("Loại phòng");
+    colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+    colType.setPrefWidth(100);
+
+    TableColumn<RoomEntry, String> colStatus = new TableColumn<>("Tình trạng");
+    colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+    colStatus.setPrefWidth(100);
+
+    TableColumn<RoomEntry, Void> colDelete = new TableColumn<>("Xóa");
+    colDelete.setPrefWidth(60);
+    colDelete.setCellFactory(param -> new TableCell<>() {
+        private final Button btnDelete = new Button("Xóa");
+
+        {
+            btnDelete.setOnAction(event -> {
+                RoomEntry room = getTableView().getItems().get(getIndex());
+                deleteRoom(room);
                 refreshRoomTable();
-            }
-        });
+            });
+        }
 
-        roomPane.getChildren().addAll(new Label("Quản Lý Phòng"), formBox, table);
-        return roomPane;
+        @Override
+        protected void updateItem(Void item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty) {
+                setGraphic(null);
+            } else {
+                setGraphic(btnDelete);
+            }
+        }
+    });
+
+    table.getColumns().setAll(colRoomName, colSize, colType, colStatus, colDelete);
+    roomList.setAll(loadRoomData());
+    table.setItems(roomList);
+
+   btnAdd.setOnAction(e -> {
+    String roomName = txtRoomName.getText().trim();
+    String size = txtSize.getText().trim();
+    String type = cbType.getValue();
+    String status = cbStatus.getValue(); // Lấy trực tiếp tiếng Việt
+    if (roomName.isEmpty() || size.isEmpty() || type == null || status == null) {
+        lblStatus.setText("Vui lòng nhập đầy đủ thông tin.");
+    } else {
+        addRoom(roomName, size, type, status); // Truyền tiếng Việt
+        lblStatus.setText("Đã thêm: " + roomName);
+        txtRoomName.clear();
+        txtSize.clear();
+        cbType.setValue(null);
+        cbStatus.setValue(null);
+        refreshRoomTable();
     }
+});
+    roomPane.getChildren().addAll(new Label("Quản Lý Phòng"), formBox, table);
+    return roomPane;
+}
+// ...existing code...
 
     // Cập nhật lại danh sách người thuê sau khi thêm
     private void refreshTenantTable() {
@@ -583,22 +638,8 @@ public void addTenant(int roomId, String name, String phone, String address) {
     private void refreshRoomTable() {
         roomList.setAll(loadRoomData());
     }
-    
     // ============================
-    // 5. Phương thức start và main
-    // ============================
-    @Override
-    public void start(Stage primaryStage) {
-        this.primaryStage = primaryStage;
-        showAuthPane();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
-    }
-    
-    // ============================
-    // 6. Các lớp mô hình (model) được khai báo bên trong
+    // 5. Các lớp mô hình (model) được khai báo bên trong
     // (Không thêm file mới)
     // ============================
     // Model dữ liệu người thuê
@@ -635,24 +676,26 @@ public void addTenant(int roomId, String name, String phone, String address) {
     }
     
     public static class RoomEntry {
-        private final SimpleStringProperty roomName;
-        private final SimpleStringProperty status;
-        
-        public RoomEntry(String roomName, String status) {
-            this.roomName = new SimpleStringProperty(roomName);
-            this.status = new SimpleStringProperty(status);
-        }
-        
-        public String getRoomName() {
-            return roomName.get();
-        }
-        public String getStatus() {
-            return status.get();
-        }
+    private final SimpleStringProperty name;
+    private final SimpleStringProperty size;
+    private final SimpleStringProperty type;
+    private final SimpleStringProperty status;
+
+    public RoomEntry(String name, String size, String type, String status) {
+        this.name = new SimpleStringProperty(name);
+        this.size = new SimpleStringProperty(size);
+        this.type = new SimpleStringProperty(type);
+        this.status = new SimpleStringProperty(status);
     }
 
+    public String getName() { return name.get(); }
+    public String getSize() { return size.get(); }
+    public String getType() { return type.get(); }
+    public String getStatus() { return status.get(); }
+}
+
+
     // Đưa BillEntry vào bên trong AdminService
-    // ...existing code...
 public static class BillEntry {
     private final SimpleIntegerProperty id;
     private final SimpleStringProperty tenantName;
@@ -674,4 +717,16 @@ public static class BillEntry {
     public SimpleStringProperty tenantNameProperty() { return tenantName; }
     public SimpleDoubleProperty amountProperty() { return amount; }
     public SimpleStringProperty descriptionProperty() { return description; }
-}} 
+}
+// ============================
+    // 6. Phương thức start và main
+    // ============================
+@Override
+    public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+        showAuthPane();
+    }
+public static void main(String[] args) {
+        launch(args);
+    }}
+    
