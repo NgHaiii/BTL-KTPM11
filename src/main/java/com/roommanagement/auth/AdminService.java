@@ -16,6 +16,8 @@ import javafx.stage.Stage;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 
 @SuppressWarnings("unchecked") // Thêm để suppress cảnh báo addAll TableColumn
 public class AdminService extends Application {
@@ -23,6 +25,9 @@ public class AdminService extends Application {
     // ObservableList dùng để lưu trữ dữ liệu hiển thị tại bảng
     private ObservableList<TenantEntry> tenantList = FXCollections.observableArrayList();
     private ObservableList<RoomEntry> roomList = FXCollections.observableArrayList();
+    // ...existing code...
+private ObservableList<BillEntry> billList = FXCollections.observableArrayList();
+// ...existing code...
     
     // Lưu tham chiếu đến Stage chính để dễ chuyển đổi giao diện
     private Stage primaryStage;
@@ -263,12 +268,24 @@ public void addTenant(int roomId, String name, String phone, String address) {
             bp.setCenter(roomPane);
         });
 
-        btnTaoHoaDon.setOnAction(e -> {
-    // Giao diện tạo hóa đơn
+    btnTaoHoaDon.setOnAction(e -> {
     VBox billPane = new VBox(10);
     billPane.setPadding(new Insets(10));
-    TextField txtTenant = new TextField();
-    txtTenant.setPromptText("Tên người thuê");
+
+    // Lấy danh sách tên người thuê từ bảng tenants
+    List<String> tenantNames = new ArrayList<>();
+    try (Connection conn = DatabaseManager.connect();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery("SELECT name FROM tenants")) {
+        while (rs.next()) {
+            tenantNames.add(rs.getString("name"));
+        }
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+
+    ComboBox<String> cbTenant = new ComboBox<>(FXCollections.observableArrayList(tenantNames));
+    cbTenant.setPromptText("Chọn người thuê");
     TextField txtAmount = new TextField();
     txtAmount.setPromptText("Số tiền");
     TextField txtDesc = new TextField();
@@ -276,44 +293,122 @@ public void addTenant(int roomId, String name, String phone, String address) {
     Button btnAddBill = new Button("Tạo hóa đơn");
     Label lblBillStatus = new Label();
 
+    // Hàm nạp lại danh sách hóa đơn từ DB (KHAI BÁO TRƯỚC)
+    Runnable loadBills = () -> {
+        billList.clear();
+        try (Connection conn = DatabaseManager.connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT b.id, b.amount, b.description, t.name as tenantName " +
+                 "FROM bills b JOIN tenants t ON b.tenant_id = t.id")) {
+            while (rs.next()) {
+                billList.add(new BillEntry(
+                    rs.getInt("id"),
+                    rs.getString("tenantName"),
+                    rs.getDouble("amount"),
+                    rs.getString("description")
+                ));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    };
+
+    // TableView hiển thị danh sách hóa đơn
+    TableView<BillEntry> billTable = new TableView<>(billList);
+    billTable.setPrefHeight(200);
+
+    TableColumn<BillEntry, String> colTenant = new TableColumn<>("Người thuê");
+    colTenant.setCellValueFactory(new PropertyValueFactory<>("tenantName"));
+
+    TableColumn<BillEntry, Double> colAmount = new TableColumn<>("Số tiền");
+    colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+
+    TableColumn<BillEntry, String> colDesc = new TableColumn<>("Mô tả");
+    colDesc.setCellValueFactory(new PropertyValueFactory<>("description"));
+
+    // Thêm cột xóa
+    TableColumn<BillEntry, Void> colDelete = new TableColumn<>("Xóa");
+    colDelete.setCellFactory(param -> new TableCell<>() {
+        private final Button btnDelete = new Button("Xóa");
+
+        {
+            btnDelete.setOnAction(event -> {
+                BillEntry bill = getTableView().getItems().get(getIndex());
+                deleteBill(bill); // Gọi hàm xóa hóa đơn
+                loadBills.run();  // Cập nhật lại bảng
+            });
+        }
+
+        @Override
+        protected void updateItem(Void item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty) {
+                setGraphic(null);
+            } else {
+                setGraphic(btnDelete);
+            }
+        }
+    });
+
+    billTable.getColumns().addAll(colTenant, colAmount, colDesc, colDelete);
+
+    // Nạp dữ liệu hóa đơn lần đầu
+    loadBills.run();
+
     btnAddBill.setOnAction(ev -> {
-        String tenant = txtTenant.getText().trim();
+        String tenant = cbTenant.getValue();
         String amountStr = txtAmount.getText().trim();
         String desc = txtDesc.getText().trim();
-        if (tenant.isEmpty() || amountStr.isEmpty()) {
-            lblBillStatus.setText("Vui lòng nhập đủ tên người thuê và số tiền.");
+        if (tenant == null || tenant.isEmpty() || amountStr.isEmpty()) {
+            lblBillStatus.setText("Vui lòng chọn người thuê và nhập số tiền.");
             return;
         }
         try {
             double amount = Double.parseDouble(amountStr);
             try (Connection conn = DatabaseManager.connect()) {
-                String sql = "INSERT INTO bills (tenant_name, amount, description) VALUES (?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, tenant);
-                pstmt.setDouble(2, amount);
-                pstmt.setString(3, desc);
-                pstmt.executeUpdate();
-                lblBillStatus.setText("Đã tạo hóa đơn cho " + tenant);
-                txtTenant.clear();
-                txtAmount.clear();
-                txtDesc.clear();
+                // Lấy tenant_id và room_id từ tên người thuê
+                String findTenantSql = "SELECT id, room_id FROM tenants WHERE name = ?";
+                PreparedStatement findTenantStmt = conn.prepareStatement(findTenantSql);
+                findTenantStmt.setString(1, tenant);
+                ResultSet rs = findTenantStmt.executeQuery();
+                if (rs.next()) {
+                    int tenantId = rs.getInt("id");
+                    int roomId = rs.getInt("room_id");
+                    String sql = "INSERT INTO bills (tenant_id, room_id, amount, description, status) VALUES (?, ?, ?, ?, ?)";
+                    PreparedStatement pstmt = conn.prepareStatement(sql);
+                    pstmt.setInt(1, tenantId);
+                    pstmt.setInt(2, roomId);
+                    pstmt.setDouble(3, amount);
+                    pstmt.setString(4, desc);
+                    pstmt.setString(5, "pending");
+                    pstmt.executeUpdate();
+                    lblBillStatus.setText("Đã tạo hóa đơn cho " + tenant + " | Mô tả: " + desc);
+                    cbTenant.setValue(null);
+                    txtAmount.clear();
+                    txtDesc.clear();
+                    // Nạp lại danh sách hóa đơn
+                    loadBills.run();
+                } else {
+                    lblBillStatus.setText("Không tìm thấy người thuê này!");
+                }
             }
         } catch (NumberFormatException ex) {
             lblBillStatus.setText("Số tiền không hợp lệ!");
         } catch (SQLException ex) {
-            lblBillStatus.setText("Lỗi khi tạo hóa đơn!");
+            lblBillStatus.setText("Lỗi khi tạo hóa đơn: " + ex.getMessage());
             ex.printStackTrace();
         }
     });
 
     billPane.getChildren().addAll(
         new Label("Tạo Hóa Đơn"),
-        txtTenant, txtAmount, txtDesc, btnAddBill, lblBillStatus
+        cbTenant, txtAmount, txtDesc, btnAddBill, lblBillStatus,
+        new Label("Danh sách hóa đơn:"), billTable
     );
     bp.setCenter(billPane);
 });
-
-btnGuiThongBao.setOnAction(e -> {
+ btnGuiThongBao.setOnAction(e -> {
     VBox notifyPane = new VBox(10);
     notifyPane.setPadding(new Insets(10));
     TextField txtTenantName = new TextField();
@@ -357,6 +452,7 @@ btnGuiThongBao.setOnAction(e -> {
         Scene scene = new Scene(bp, 800, 500);
         primaryStage.setScene(scene);
         primaryStage.show();
+
     }
 
     // ============================
@@ -385,16 +481,24 @@ btnGuiThongBao.setOnAction(e -> {
     TableView<TenantEntry> table = new TableView<>();
     table.setPrefHeight(300);
     table.setPrefWidth(600);
+
     TableColumn<TenantEntry, String> colName = new TableColumn<>("Tên");
-    TableColumn<TenantEntry, String> colPhone = new TableColumn<>("SĐT");
-    TableColumn<TenantEntry, String> colAddress = new TableColumn<>("Địa chỉ");
     colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+    colName.setPrefWidth(180); // Thêm dòng này
+
+    TableColumn<TenantEntry, String> colPhone = new TableColumn<>("SĐT");
     colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
+    colPhone.setPrefWidth(120); // Thêm dòng này
+
+    TableColumn<TenantEntry, String> colAddress = new TableColumn<>("Địa chỉ");
     colAddress.setCellValueFactory(new PropertyValueFactory<>("address"));
+    colAddress.setPrefWidth(180); // Thêm dòng này
+
     table.getColumns().addAll(colName, colPhone, colAddress);
 
     tenantList.setAll(loadTenantData());
     table.setItems(tenantList);
+
 
     btnAdd.setOnAction(e -> {
         String roomIdStr = txtRoomId.getText().trim();
@@ -497,7 +601,17 @@ btnGuiThongBao.setOnAction(e -> {
     // 6. Các lớp mô hình (model) được khai báo bên trong
     // (Không thêm file mới)
     // ============================
-    
+    // Model dữ liệu người thuê
+    private void deleteBill(BillEntry bill) {
+    try (Connection conn = DatabaseManager.connect()) {
+        String sql = "DELETE FROM bills WHERE id = ?";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setInt(1, bill.getId());
+        pstmt.executeUpdate();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+}
     public static class TenantEntry {
         private final SimpleStringProperty name;
         private final SimpleStringProperty phone;
@@ -536,4 +650,28 @@ btnGuiThongBao.setOnAction(e -> {
             return status.get();
         }
     }
-}
+
+    // Đưa BillEntry vào bên trong AdminService
+    // ...existing code...
+public static class BillEntry {
+    private final SimpleIntegerProperty id;
+    private final SimpleStringProperty tenantName;
+    private final SimpleDoubleProperty amount;
+    private final SimpleStringProperty description;
+
+    public BillEntry(int id, String tenantName, double amount, String description) {
+        this.id = new SimpleIntegerProperty(id);
+        this.tenantName = new SimpleStringProperty(tenantName);
+        this.amount = new SimpleDoubleProperty(amount);
+        this.description = new SimpleStringProperty(description);
+    }
+
+    public int getId() { return id.get(); }
+    public String getTenantName() { return tenantName.get(); }
+    public double getAmount() { return amount.get(); }
+    public String getDescription() { return description.get(); }
+
+    public SimpleStringProperty tenantNameProperty() { return tenantName; }
+    public SimpleDoubleProperty amountProperty() { return amount; }
+    public SimpleStringProperty descriptionProperty() { return description; }
+}} 
