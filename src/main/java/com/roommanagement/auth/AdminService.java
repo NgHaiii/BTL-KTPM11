@@ -166,22 +166,34 @@ regPane.setStyle(
         Button btnRegister = new Button("Đăng Kí");
         Label lblRegStatus = new Label();
 
-        btnRegister.setOnAction(e -> {
-            String email = txtEmail.getText().trim();
-            String phone = txtPhone.getText().trim();
-            String username = txtUsername.getText().trim();
-            String password = txtPassword.getText().trim();
-            if(email.isEmpty() || phone.isEmpty() || username.isEmpty() || password.isEmpty()) {
-                lblRegStatus.setText("Vui lòng điền đầy đủ thông tin.");
-            } else {
-                registerAdmin(email, phone, username, password);
-                lblRegStatus.setText("Đăng ký thành công!");
-                txtEmail.clear();
-                txtPhone.clear();
-                txtUsername.clear();
-                txtPassword.clear();
-            }
-        });
+       btnRegister.setOnAction(e -> {
+    String email = txtEmail.getText().trim();
+    String phone = txtPhone.getText().trim();
+    String username = txtUsername.getText().trim();
+    String password = txtPassword.getText().trim();
+    if(email.isEmpty() || phone.isEmpty() || username.isEmpty() || password.isEmpty()) {
+        lblRegStatus.setText("Vui lòng điền đầy đủ thông tin.");
+    } else {
+        registerAdmin(email, phone, username, password);
+
+        // XÓA DỮ LIỆU CŨ SAU KHI ĐĂNG KÝ TÀI KHOẢN MỚI
+        try (Connection conn = DatabaseManager.connect();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DELETE FROM tenants");
+            stmt.executeUpdate("DELETE FROM rooms");
+            stmt.executeUpdate("DELETE FROM bills");
+            stmt.executeUpdate("DELETE FROM notifications");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        lblRegStatus.setText("Đăng ký thành công! Dữ liệu đã được làm mới.");
+        txtEmail.clear();
+        txtPhone.clear();
+        txtUsername.clear();
+        txtPassword.clear();
+    }
+}); 
 
         regPane.add(new Label("Email:"), 0, 0);
         regPane.add(txtEmail, 1, 0);
@@ -241,35 +253,21 @@ loginPane.setStyle(
         tabLogin.setContent(loginPane);
         tabLogin.setClosable(false);
 
-// Thêm các import sau nếu chưa có ở đầu file:
-// import javafx.scene.image.Image;
-// import javafx.scene.layout.BackgroundImage;
-// import javafx.scene.layout.Background;
-// import javafx.scene.layout.BackgroundRepeat;
-// import javafx.scene.layout.BackgroundPosition;
-// import javafx.scene.layout.BackgroundSize;
-// import javafx.geometry.Pos;
-// import javafx.scene.layout.StackPane;
 
 tabPane.getTabs().addAll(tabRegister, tabLogin);
-
 tabPane.setMaxWidth(400);
 tabPane.setMaxHeight(350);
 tabPane.setDisable(false);
 tabPane.setOpacity(1.0);
 
-// Tạo StackPane để căn giữa tabPane
 StackPane root = new StackPane();
 root.getChildren().add(tabPane);
 StackPane.setAlignment(tabPane, Pos.CENTER);
 
-// Nếu muốn đặt màu nền trắng hoặc màu khác, có thể thêm dòng sau (không bắt buộc):
-// root.setStyle("-fx-background-color: white;");
-
 Scene authScene = new Scene(root, 600, 400);
 primaryStage.setScene(authScene);
-primaryStage.show();
-    }
+primaryStage.show(); 
+}
     // 3.2. Dashboard chính cho Admin với menu chức năng và nội dung động.
     private void showDashboard(String adminUsername) {
         primaryStage.setTitle("Dashboard - " + adminUsername);
