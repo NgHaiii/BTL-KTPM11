@@ -6,7 +6,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -241,12 +241,35 @@ loginPane.setStyle(
         tabLogin.setContent(loginPane);
         tabLogin.setClosable(false);
 
-        tabPane.getTabs().addAll(tabRegister, tabLogin);
-        Scene authScene = new Scene(tabPane, 400, 300);
-        primaryStage.setScene(authScene);
-        primaryStage.show();
-    }
+// Thêm các import sau nếu chưa có ở đầu file:
+// import javafx.scene.image.Image;
+// import javafx.scene.layout.BackgroundImage;
+// import javafx.scene.layout.Background;
+// import javafx.scene.layout.BackgroundRepeat;
+// import javafx.scene.layout.BackgroundPosition;
+// import javafx.scene.layout.BackgroundSize;
+// import javafx.geometry.Pos;
+// import javafx.scene.layout.StackPane;
 
+tabPane.getTabs().addAll(tabRegister, tabLogin);
+
+tabPane.setMaxWidth(400);
+tabPane.setMaxHeight(350);
+tabPane.setDisable(false);
+tabPane.setOpacity(1.0);
+
+// Tạo StackPane để căn giữa tabPane
+StackPane root = new StackPane();
+root.getChildren().add(tabPane);
+StackPane.setAlignment(tabPane, Pos.CENTER);
+
+// Nếu muốn đặt màu nền trắng hoặc màu khác, có thể thêm dòng sau (không bắt buộc):
+// root.setStyle("-fx-background-color: white;");
+
+Scene authScene = new Scene(root, 600, 400);
+primaryStage.setScene(authScene);
+primaryStage.show();
+    }
     // 3.2. Dashboard chính cho Admin với menu chức năng và nội dung động.
     private void showDashboard(String adminUsername) {
         primaryStage.setTitle("Dashboard - " + adminUsername);
