@@ -1,5 +1,4 @@
 package com.roommanagement.auth;
-
 // AdminService.java - Quản lý đăng ký, đăng nhập và các chức năng quản trị cho Admin
 import com.roommanagement.database.DatabaseManager;
 import javafx.application.Application;
@@ -20,18 +19,15 @@ import java.util.List;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 
-@SuppressWarnings("unchecked") // Thêm để suppress cảnh báo addAll TableColumn
+@SuppressWarnings("unchecked") 
 public class AdminService extends Application {
-
     // ObservableList dùng để lưu trữ dữ liệu hiển thị tại bảng
     private ObservableList<TenantEntry> tenantList = FXCollections.observableArrayList();
     private ObservableList<RoomEntry> roomList = FXCollections.observableArrayList();
     // ObservableList cho danh sách hóa đơn
-private ObservableList<BillEntry> billList = FXCollections.observableArrayList();
-    
+private ObservableList<BillEntry> billList = FXCollections.observableArrayList();  
     // Lưu tham chiếu đến Stage chính để dễ chuyển đổi giao diện
     private Stage primaryStage;
-
     // ============================
     // 1. PHƯƠNG THỨC CRUD (gọi DatabaseManager)
     // ============================
@@ -66,7 +62,7 @@ private ObservableList<BillEntry> billList = FXCollections.observableArrayList()
             return false;
         }
     }
-    // Thêm người thuê: lưu thông tin vào bảng tenants (trường: user_id, room_id, rental_start, rental_end, name, phone, address)
+    // Thêm người thuê: lưu thông tin vào bảng tenants 
 public void addTenant(int roomId, String name, String phone, String address) {
     try (Connection conn = DatabaseManager.connect()) {
         String sql = "INSERT INTO tenants (room_id, name, phone, address) VALUES (?, ?, ?, ?)";
@@ -80,7 +76,7 @@ public void addTenant(int roomId, String name, String phone, String address) {
         e.printStackTrace();
     }
 }    
-    // Thêm phòng: lưu thông tin vào bảng rooms (trường: room_name, status)
+    // Thêm phòng: lưu thông tin vào bảng rooms 
 public void addRoom(String name, String size, String type, String status) {
     try (Connection conn = DatabaseManager.connect()) {
         String sql = "INSERT INTO rooms (name, size, type, status) VALUES (?, ?, ?, ?)";
@@ -140,13 +136,23 @@ public void addRoom(String name, String size, String type, String status) {
         primaryStage.setTitle("Admin: Đăng Kí / Đăng Nhập");
 
         TabPane tabPane = new TabPane();
-
+        tabPane.setStyle(
+    "-fx-background-color: linear-gradient(to bottom, #f7971e, #ffd200);" +
+    "-fx-background-radius: 15;" +
+    "-fx-padding: 10;"
+);
         // Tab Đăng Kí
-        Tab tabRegister = new Tab("Đăng Kí");
-        GridPane regPane = new GridPane();
-        regPane.setHgap(10);
-        regPane.setVgap(10);
-        regPane.setPadding(new Insets(10));
+    Tab tabRegister = new Tab("Đăng Kí");
+GridPane regPane = new GridPane();
+regPane.setHgap(10);
+regPane.setVgap(10);
+regPane.setPadding(new Insets(10));
+regPane.setStyle(
+    "-fx-background-color: linear-gradient(to bottom, #fffde4, #f7971e);" +
+    "-fx-background-radius: 15;" +
+    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 8, 0, 2, 2);" +
+    "-fx-padding: 15;"
+);
 
         TextField txtEmail = new TextField();
         txtEmail.setPromptText("Nhập email");
@@ -193,11 +199,16 @@ public void addRoom(String name, String size, String type, String status) {
 
         // Tab Đăng Nhập
         Tab tabLogin = new Tab("Đăng Nhập");
-        GridPane loginPane = new GridPane();
-        loginPane.setHgap(10);
-        loginPane.setVgap(10);
-        loginPane.setPadding(new Insets(10));
-
+         GridPane loginPane = new GridPane();
+loginPane.setHgap(10);
+loginPane.setVgap(10);
+loginPane.setPadding(new Insets(10));
+loginPane.setStyle(
+    "-fx-background-color: linear-gradient(to bottom, #e0c3fc, #8ec5fc);" +
+    "-fx-background-radius: 15;" +
+    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 8, 0, 2, 2);" +
+    "-fx-padding: 15;"
+);
         TextField txtLoginUsername = new TextField();
         txtLoginUsername.setPromptText("Nhập tên đăng nhập");
         PasswordField txtLoginPassword = new PasswordField();
@@ -246,7 +257,12 @@ public void addRoom(String name, String size, String type, String status) {
         // Menu bên trái
         VBox menuBox = new VBox(15);
         menuBox.setPadding(new Insets(10));
-        menuBox.setStyle("-fx-background-color: #F0F0F0;");
+        menuBox.setStyle(
+    "-fx-background-color: linear-gradient(to bottom, #6dd5ed, #2193b0);" +
+    "-fx-background-radius: 15;" +
+    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 2, 2);" +
+    "-fx-padding: 15;"
+);
         Button btnQuanLyNguoiThue = new Button("Quản Lý Người Thuê");
         Button btnQuanLyPhong = new Button("Quản Lý Phòng");
         Button btnTaoHoaDon = new Button("Tạo Hóa Đơn");
@@ -254,7 +270,6 @@ public void addRoom(String name, String size, String type, String status) {
         Button btnLogout = new Button("Đăng Xuất");
         menuBox.getChildren().addAll(btnQuanLyNguoiThue, btnQuanLyPhong, btnTaoHoaDon, btnGuiThongBao, btnLogout);
         bp.setLeft(menuBox);
-
         // Nơi chứa nội dung cấp trung tâm sẽ thay đổi theo chức năng được chọn
         StackPane centerPane = new StackPane();
         bp.setCenter(centerPane);
@@ -341,8 +356,8 @@ colDelete.setCellFactory(param -> new TableCell<>() {
     {
         btnDelete.setOnAction(event -> {
             BillEntry bill = getTableView().getItems().get(getIndex());
-            deleteBill(bill); // Gọi hàm xóa hóa đơn
-            loadBills.run();  // Cập nhật lại bảng
+            deleteBill(bill); 
+            loadBills.run();  
         });
     }
 
@@ -520,7 +535,6 @@ private void deleteTenant(TenantEntry tenant) {
 
     HBox formBox = new HBox(10);
 
-    // ComboBox chọn phòng (theo tên phòng)
     ComboBox<RoomEntry> cbRoom = new ComboBox<>(roomList);
     cbRoom.setPromptText("Chọn phòng");
 
@@ -549,7 +563,7 @@ private void deleteTenant(TenantEntry tenant) {
     TableColumn<TenantEntry, String> colAddress = new TableColumn<>("Địa chỉ");
     colAddress.setCellValueFactory(new PropertyValueFactory<>("address"));
     colAddress.setPrefWidth(180);
-    // Thêm cột Xóa
+
     TableColumn<TenantEntry, Void> colDelete = new TableColumn<>("Xóa");
 colDelete.setPrefWidth(60);
 colDelete.setCellFactory(param -> new TableCell<>() {
@@ -572,7 +586,7 @@ colDelete.setCellFactory(param -> new TableCell<>() {
         }
     }
 });
-table.getColumns().add(colDelete);
+    table.getColumns().add(colDelete);
 
     table.getColumns().addAll(colName, colPhone, colAddress);
 
@@ -622,7 +636,7 @@ table.getColumns().add(colDelete);
         txtPhone.clear();
         txtAddress.clear();
         refreshTenantTable();
-        refreshRoomTable(); // Thêm dòng này để cập nhật lại danh sách phòng
+        refreshRoomTable(); 
     }
 });
 
@@ -704,11 +718,11 @@ private Pane getRoomManagementPane() {
     String roomName = txtRoomName.getText().trim();
     String size = txtSize.getText().trim();
     String type = cbType.getValue();
-    String status = cbStatus.getValue(); // Lấy trực tiếp tiếng Việt
+    String status = cbStatus.getValue(); 
     if (roomName.isEmpty() || size.isEmpty() || type == null || status == null) {
         lblStatus.setText("Vui lòng nhập đầy đủ thông tin.");
     } else {
-        addRoom(roomName, size, type, status); // Truyền tiếng Việt
+        addRoom(roomName, size, type, status); 
         lblStatus.setText("Đã thêm: " + roomName);
         txtRoomName.clear();
         txtSize.clear();
@@ -720,13 +734,11 @@ private Pane getRoomManagementPane() {
     roomPane.getChildren().addAll(new Label("Quản Lý Phòng"), formBox, table);
     return roomPane;
 }
-// ...existing code...
 
     // Cập nhật lại danh sách người thuê sau khi thêm
     private void refreshTenantTable() {
         tenantList.setAll(loadTenantData());
     }
-
     // Cập nhật lại danh sách phòng sau khi thêm
     private void refreshRoomTable() {
         roomList.setAll(loadRoomData());

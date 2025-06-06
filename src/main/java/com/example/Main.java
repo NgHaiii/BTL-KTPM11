@@ -4,7 +4,7 @@ import javafx.application.Application;
 
 public class Main {
     public static void main(String[] args) {
-        // Khởi động ứng dụng JavaFX bằng cách gọi AdminService
+        // Khởi động ứng dụng 
         Application.launch(AdminService.class, args);
     }
 }
