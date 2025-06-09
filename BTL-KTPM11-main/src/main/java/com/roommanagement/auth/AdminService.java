@@ -1,5 +1,5 @@
 package com.roommanagement.auth;
-// AdminService.java - Quản lý đăng ký, đăng nhập và các chức năng quản trị cho Admin
+
 import com.roommanagement.database.DatabaseManager;
 import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
@@ -21,17 +21,15 @@ import javafx.beans.property.SimpleIntegerProperty;
 
 @SuppressWarnings("unchecked") 
 public class AdminService extends Application {
-    // ObservableList dùng để lưu trữ dữ liệu hiển thị tại bảng
+    
     private ObservableList<TenantEntry> tenantList = FXCollections.observableArrayList();
     private ObservableList<RoomEntry> roomList = FXCollections.observableArrayList();
-    // ObservableList cho danh sách hóa đơn
-private ObservableList<BillEntry> billList = FXCollections.observableArrayList();  
-    // Lưu tham chiếu đến Stage chính để dễ chuyển đổi giao diện
-    private Stage primaryStage;
-    // ============================
-    // 1. PHƯƠNG THỨC CRUD (gọi DatabaseManager)
-    // ============================
     
+private ObservableList<BillEntry> billList = FXCollections.observableArrayList();  
+    
+    private Stage primaryStage;
+    
+    // 1. PHƯƠNG THỨC CRUD 
     // Đăng ký Admin: lưu thông tin vào bảng users
     public void registerAdmin(String email, String phone, String username, String password) {
         try (Connection conn = DatabaseManager.connect()) {
@@ -48,7 +46,7 @@ private ObservableList<BillEntry> billList = FXCollections.observableArrayList()
         }
     }
 
-    // Đăng nhập Admin: truy vấn bảng users
+    // Đăng nhập Admin: 
     public boolean loginAdmin(String username, String password) {
         try (Connection conn = DatabaseManager.connect()) {
             String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
@@ -62,7 +60,7 @@ private ObservableList<BillEntry> billList = FXCollections.observableArrayList()
             return false;
         }
     }
-    // Thêm người thuê: lưu thông tin vào bảng tenants 
+    // Thêm người thuê:
 public void addTenant(int roomId, String name, String phone, String address) {
     try (Connection conn = DatabaseManager.connect()) {
         String sql = "INSERT INTO tenants (room_id, name, phone, address) VALUES (?, ?, ?, ?)";
@@ -76,7 +74,7 @@ public void addTenant(int roomId, String name, String phone, String address) {
         e.printStackTrace();
     }
 }    
-    // Thêm phòng: lưu thông tin vào bảng rooms 
+    // Thêm phòng: 
 public void addRoom(String name, String size, String type, String status) {
     try (Connection conn = DatabaseManager.connect()) {
         String sql = "INSERT INTO rooms (name, size, type, status) VALUES (?, ?, ?, ?)";
@@ -92,10 +90,8 @@ public void addRoom(String name, String size, String type, String status) {
         e.printStackTrace();
     }
 }
-
-    // ============================
     // 2. PHƯƠNG THỨC LOAD DỮ LIỆU TỪ CSDL
-    // ============================
+
     private List<TenantEntry> loadTenantData() {
         List<TenantEntry> list = new ArrayList<>();
         try (Connection conn = DatabaseManager.connect();
@@ -128,10 +124,9 @@ public void addRoom(String name, String size, String type, String status) {
     }
     return list;
 }
-    // ============================
+    
     // 3. GIAO DIỆN CHÍNH: ĐĂNG KÍ / ĐĂNG NHẬP, DASHBOARD & MENU CHỨC NĂNG
-    // ============================
-       // 3.1. Giao diện đăng ký/đăng nhập (sử dụng TabPane)
+       // 3.1. Giao diện đăng ký/đăng nhập 
     private void showAuthPane() {
         primaryStage.setTitle("Admin: Đăng Kí / Đăng Nhập");
 
@@ -176,7 +171,6 @@ regPane.setStyle(
     } else {
         registerAdmin(email, phone, username, password);
 
-        // XÓA DỮ LIỆU CŨ SAU KHI ĐĂNG KÝ TÀI KHOẢN MỚI
         try (Connection conn = DatabaseManager.connect();
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM tenants");
@@ -295,7 +289,6 @@ primaryStage.show();
         StackPane centerPane = new StackPane();
         bp.setCenter(centerPane);
 
-        // Gán hành vi cho nút menu:
         btnQuanLyNguoiThue.setOnAction(e -> {
             // Hiển thị giao diện Quản Lý Người Thuê với form thêm và bảng danh sách
             Pane tenantPane = getTenantManagementPane();
@@ -333,7 +326,7 @@ primaryStage.show();
     Button btnAddBill = new Button("Tạo hóa đơn");
     Label lblBillStatus = new Label();
    
-    // Hàm nạp lại danh sách hóa đơn từ DB (KHAI BÁO TRƯỚC)
+    // Hàm nạp lại danh sách hóa đơn 
     Runnable loadBills = () -> {
         billList.clear();
         try (Connection conn = DatabaseManager.connect();
@@ -353,7 +346,6 @@ primaryStage.show();
             ex.printStackTrace();
         }
     };
-// Tạo TableView để hiển thị danh sách hóa đơn
 TableView<BillEntry> billTable = new TableView<>(billList);
 billTable.setPrefHeight(200);
 
@@ -497,11 +489,8 @@ loadBills.run();
         primaryStage.show();
 
     }
-
-    // ============================
-    // 4. Các giao diện chức năng cụ thể
-    // ============================
-    
+   
+    // 4. Các giao diện chức năng cụ thể    
     // 4.1. Giao diện Quản Lý Người Thuê:
     // Form thêm người thuê kèm TableView hiển thị danh sách người thuê
     private void deleteRoom(RoomEntry room) {
@@ -536,7 +525,6 @@ private void deleteTenant(TenantEntry tenant) {
             pstmt.setString(3, tenant.getAddress());
             pstmt.executeUpdate();
         }
-        // Cập nhật trạng thái phòng về "Trống"
         if (roomId != -1) {
             try (PreparedStatement pstmt = conn.prepareStatement(
                     "UPDATE rooms SET status = 'Trống' WHERE id = ?")) {
@@ -642,7 +630,6 @@ colDelete.setCellFactory(param -> new TableCell<>() {
         }
         addTenant(roomId, name, phone, address);
 
-        // Cập nhật trạng thái phòng sang "Cho thuê"
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement("UPDATE rooms SET status = 'Cho thuê' WHERE id = ?")) {
             pstmt.setInt(1, roomId);
@@ -756,18 +743,14 @@ private Pane getRoomManagementPane() {
     return roomPane;
 }
 
-    // Cập nhật lại danh sách người thuê sau khi thêm
     private void refreshTenantTable() {
         tenantList.setAll(loadTenantData());
     }
-    // Cập nhật lại danh sách phòng sau khi thêm
     private void refreshRoomTable() {
         roomList.setAll(loadRoomData());
     }
-    // ============================
-    // 5. Các lớp mô hình (model) được khai báo bên trong
-    // (Không thêm file mới)
-    // ============================
+
+    // 5. Các lớp mô hình (model)
     // Model dữ liệu người thuê
     private void deleteBill(BillEntry bill) {
     try (Connection conn = DatabaseManager.connect()) {
@@ -825,7 +808,7 @@ private Pane getRoomManagementPane() {
     }
 }
 
-    // Đưa BillEntry vào bên trong AdminService
+    
 public static class BillEntry {
     private final SimpleIntegerProperty id;
     private final SimpleStringProperty tenantName;
@@ -848,9 +831,9 @@ public static class BillEntry {
     public SimpleDoubleProperty amountProperty() { return amount; }
     public SimpleStringProperty descriptionProperty() { return description; }
 }
-// ============================
+
     // 6. Phương thức start và main
-    // ============================
+   
 @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;

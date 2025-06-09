@@ -37,7 +37,7 @@
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- MySQL JDBC driver (thay thế PostgreSQL) -->
+        
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
@@ -47,7 +47,7 @@
 
     <build>
         <plugins>
-            <!-- Plugin Maven Compiler để khớp với JDK 21 -->
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -58,7 +58,7 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Maven Plugin -->
+            
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -66,7 +66,7 @@
                 <configuration>
                     <mainClass>com.roommanagement.auth.AdminService</mainClass>
                     <options>
-                        <!-- Khắc phục lỗi JavaFX runtime missing -->
+                        
                         <option>--module-path</option>
                         <option>${javafx.version}</option>
                         <option>--add-modules</option>
