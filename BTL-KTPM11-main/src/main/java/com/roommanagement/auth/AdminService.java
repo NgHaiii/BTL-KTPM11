@@ -9,8 +9,6 @@ import javafx.scene.control.Label;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import com.roommanagement.notification.InvoiceService;
-
 
 public class AdminService {
     // Đăng nhập Admin
@@ -206,22 +204,6 @@ public List<BillEntry> loadBills() {
     }
     return bills;
 }
-// ...existing code...
-
-    // Lấy danh sách tên người thuê
-    /*public List<String> getTenantNames() {
-        List<String> tenantNames = new ArrayList<>();
-        try (Connection conn = DatabaseManager.connect();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT name FROM tenants")) {
-            while (rs.next()) {
-                tenantNames.add(rs.getString("name"));
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        return tenantNames;
-    }*/
 
     // Gửi thông báo
     public void sendNotification(String tenantName, String message, Label lblNotifyStatus) {
@@ -274,78 +256,9 @@ public List<BillEntry> loadBills() {
         return new TenantInfo("", "", "");
     }
 
-    // Tạo hóa đơn, xuất PDF, lưu DB (trả về đường dẫn file PDF)
-    /*public String createBillAndExportPDF(String tenant, String amount, String desc) throws Exception {
-        TenantInfo info = getTenantInfo(tenant);
-        String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
-        // Xuất PDF
-        InvoiceService invoiceService = new InvoiceService();
-        invoiceService.exportInvoiceToPDF(
-    filePath,
-    tenant,
-    room,
-    phone,
-    address,
-    rent,         // tiền phòng
-    electricity,  // tiền điện nước
-    service,      // tiền dịch vụ*/
-
-    public String createBillAndExportPDF(String tenant, String amount, String desc) throws Exception {
-    TenantInfo info = getTenantInfo(tenant);
-    String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
-
-    // Lấy thông tin từ TenantInfo
-    String room = info.room;
-    String phone = info.phone;
-    String address = info.address;
-
-    // Các khoản phí, bạn có thể thay đổi giá trị này hoặc truyền thêm tham số nếu cần
-    double rent = 0;         // tiền phòng
-    double electricity = 0;  // tiền điện nước
-    double service = 0;      // tiền dịch vụ
-    double internet = 0;     // tiền mạng
-    double total = Double.parseDouble(amount); // tổng cộng
-
-    // Xuất PDF
-    InvoiceService invoiceService = new InvoiceService();
-    invoiceService.exportInvoiceToPDF(
-    filePath,
-    tenant,
-    room,
-    phone,
-    address,
-    String.valueOf(rent),
-    String.valueOf(electricity),
-    String.valueOf(service),
-    String.valueOf(internet),
-    String.valueOf(total)
-);
-        // Lưu vào DB
-        try (Connection conn = DatabaseManager.connect()) {
-            String findTenantSql = "SELECT id, room_id FROM tenants WHERE name = ?";
-            PreparedStatement findTenantStmt = conn.prepareStatement(findTenantSql);
-            findTenantStmt.setString(1, tenant);
-            ResultSet rs = findTenantStmt.executeQuery();
-            if (rs.next()) {
-                int tenantId = rs.getInt("id");
-                int roomId = rs.getInt("room_id");
-                String sql = "INSERT INTO bills (tenant_id, room_id, amount, description, status, pdf_path) VALUES (?, ?, ?, ?, ?, ?)";
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                pstmt.setInt(1, tenantId);
-                pstmt.setInt(2, roomId);
-                pstmt.setDouble(3, Double.parseDouble(amount));
-                pstmt.setString(4, desc);
-                pstmt.setString(5, "pending");
-                pstmt.setString(6, filePath);
-                pstmt.executeUpdate();
-            }
-        }
-        return filePath;
-    }
-
     // Lấy danh sách hóa đơn của 1 người thuê
-    public List<BillEntry> getBillsByTenant(String tenantName) {
         List<BillEntry> bills = new ArrayList<>();
+    public List<BillEntry> getBillsByTenant(String tenantName) {
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT b.id, b.amount, b.description, b.pdf_path FROM bills b " +
