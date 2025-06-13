@@ -2,17 +2,15 @@ package com.roommanagement.auth;
 
 import com.roommanagement.auth.AdminModel.*;
 import com.roommanagement.database.DatabaseManager;
-import com.roommanagement.notification.InvoiceService;
 import com.roommanagement.notification.NotificationService;
 import com.roommanagement.billing.InvoiceFormView;
 import com.roommanagement.billing.InvoiceFormController;
 
 import java.util.Map;
 
-import javax.swing.JPanel;
 
 import javafx.application.Application;
-import javafx.application.Platform;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -21,17 +19,16 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.control.cell.TextFieldTableCell;
+
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import com.roommanagement.auth.AdminService.BillEntry;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
- import java.util.ArrayList;
 
+import java.util.List;
+ 
 
 public class AdminView extends Application {
     private final NotificationService notificationService = new NotificationService();
@@ -643,304 +640,8 @@ private Pane getTenantManagementPane() {
     InvoiceFormController controller = new InvoiceFormController(service, view);
     return view.getView(tenantNames);
 }
+
     
-/*public class InvoiceFormController {
-    private final AdminService service;
-    private final InvoiceFormView view;
-
-    public InvoiceFormController(AdminService service, InvoiceFormView view) {
-        this.service = service;
-        this.view = view;
-        initEvents();
-    }
-
-    private void initEvents() {
-        // Tự động điền thông tin khi chọn người thuê
-        view.cbTenant.setOnAction(ev -> {
-            String tenant = view.cbTenant.getValue();
-            if (tenant != null && !tenant.isEmpty()) {
-                AdminService.TenantInfo info = service.getTenantInfo(tenant);
-                view.txtRoom.setText(info.room);
-                view.txtPhone.setText(info.phone);
-                view.txtAddress.setText(info.address);
-            }
-        });
-
-        // Tự động tính tổng tiền khi thay đổi dịch vụ
-        view.items.addListener((javafx.collections.ListChangeListener<InvoiceItem>) c -> updateTotal());
-        view.tblServices.setItems(view.items);
-
-        // Khi chỉnh sửa số lượng, đơn giá, tự động tính lại thành tiền và tổng tiền
-        view.tblServices.setEditable(true);
-
-        view.btnSendInvoice.setOnAction(ev -> sendInvoice());
-    }
-
-    private void updateTotal() {
-        double total = 0;
-        for (InvoiceItem item : view.items) {
-            item.thanhTien = item.soLuong * item.donGia;
-            total += item.thanhTien;
-        }
-        view.tblServices.refresh();
-        view.txtTotal.setText(String.format("%,.0f", total));
-    }
-
-    private void sendInvoice() {
-        String tenant = view.cbTenant.getValue();
-        String room = view.txtRoom.getText().trim();
-        String phone = view.txtPhone.getText().trim();
-        String address = view.txtAddress.getText().trim();
-        String chuHo = view.txtChuHo.getText().trim();
-        String message = view.txtMessage.getText().trim();
-
-        if (tenant == null || tenant.isEmpty() || room.isEmpty() || phone.isEmpty() || address.isEmpty()
-                || chuHo.isEmpty() || view.items.isEmpty() || message.isEmpty()) {
-            view.lblNotifyStatus.setText("Vui lòng nhập đầy đủ thông tin hóa đơn và thông báo!");
-            return;
-        }
-        try {
-            double tongTien = 0;
-            for (InvoiceItem item : view.items) tongTien += item.thanhTien;
-
-            // 1. Xuất file hóa đơn PDF
-            String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
-            exportInvoiceToPDF(filePath, tenant, room, phone, address, chuHo, new ArrayList<>(view.items), tongTien);
-
-            // 2. Lưu thông báo vào database
-            service.sendNotification(tenant, message + " [File hóa đơn: " + filePath + "]", view.lblNotifyStatus);
-
-            view.lblNotifyStatus.setText("Đã gửi hóa đơn và thông báo cho " + tenant + ". File: " + filePath);
-            Platform.runLater(() -> {
-                try {
-                    java.awt.Desktop.getDesktop().open(new java.io.File(filePath));
-                } catch (Exception e) {
-                    // ignore
-                }
-            });
-
-            // Xóa trắng form
-            view.cbTenant.setValue(null);
-            view.txtRoom.clear();
-            view.txtPhone.clear();
-            view.txtAddress.clear();
-            view.txtChuHo.clear();
-            view.txtMessage.clear();
-            view.items.clear();
-            view.txtTotal.clear();
-        } catch (Exception ex) {
-            view.lblNotifyStatus.setText("Lỗi khi gửi hóa đơn/thông báo: " + ex.getMessage());
-            ex.printStackTrace();
-        }
-    }
-
-    // Hàm xuất hóa đơn PDF (dùng iText)
-    private void exportInvoiceToPDF(
-            String filePath,
-            String tenant,
-            String room,
-            String phone,
-            String address,
-            String chuHo,
-            List<InvoiceItem> items,
-            double tongTien
-    ) throws Exception {
-        com.itextpdf.text.Document document = new com.itextpdf.text.Document(com.itextpdf.text.PageSize.A4, 40, 40, 40, 40);
-        com.itextpdf.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(filePath));
-        document.open();
-
-        com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 22, com.itextpdf.text.Font.BOLD, new com.itextpdf.text.BaseColor(0, 102, 204));
-        com.itextpdf.text.Font labelFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12, com.itextpdf.text.Font.BOLD);
-        com.itextpdf.text.Font normalFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12);
-
-        com.itextpdf.text.Paragraph title = new com.itextpdf.text.Paragraph("HÓA ĐƠN THANH TOÁN", titleFont);
-        title.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
-        title.setSpacingAfter(18f);
-        document.add(title);
-
-        com.itextpdf.text.Paragraph info = new com.itextpdf.text.Paragraph(
-                "Ngày: " + java.time.LocalDate.now() + "\n" +
-                "Khách thuê: " + tenant + "\n" +
-                "Phòng: " + room + "\n" +
-                "SĐT: " + phone + "\n" +
-                "Địa chỉ thuê: " + address + "\n" +
-                "Chủ hộ: " + chuHo + "\n"
-        , normalFont);
-        info.setSpacingAfter(18f);
-        document.add(info);
-
-        com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(5);
-        table.setWidths(new float[]{1.2f, 3.5f, 1.5f, 2f, 2f});
-        table.setWidthPercentage(100);
-
-        addHeaderCell(table, "Số lượng", labelFont);
-        addHeaderCell(table, "Nội dung", labelFont);
-        addHeaderCell(table, "Đơn vị", labelFont);
-        addHeaderCell(table, "Đơn giá", labelFont);
-        addHeaderCell(table, "Thành tiền", labelFont);
-
-        for (InvoiceItem item : items) {
-            addNormalCell(table, String.valueOf(item.soLuong), normalFont, com.itextpdf.text.Element.ALIGN_CENTER);
-            addNormalCell(table, item.tenDichVu, normalFont, com.itextpdf.text.Element.ALIGN_LEFT);
-            addNormalCell(table, item.donVi, normalFont, com.itextpdf.text.Element.ALIGN_CENTER);
-            addNormalCell(table, String.format("%,.0f", item.donGia), normalFont, com.itextpdf.text.Element.ALIGN_RIGHT);
-            addNormalCell(table, String.format("%,.0f", item.thanhTien), normalFont, com.itextpdf.text.Element.ALIGN_RIGHT);
-        }
-
-        document.add(table);
-
-        com.itextpdf.text.Paragraph totalP = new com.itextpdf.text.Paragraph("TỔNG CỘNG: " + String.format("%,.0f", tongTien) + " VNĐ", labelFont);
-        totalP.setAlignment(com.itextpdf.text.Element.ALIGN_RIGHT);
-        totalP.setSpacingBefore(18f);
-        document.add(totalP);
-
-        document.close();
-    }
-
-    private void addHeaderCell(com.itextpdf.text.pdf.PdfPTable table, String text, com.itextpdf.text.Font font) {
-        com.itextpdf.text.pdf.PdfPCell cell = new com.itextpdf.text.pdf.PdfPCell(new com.itextpdf.text.Phrase(text, font));
-        cell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
-        cell.setBackgroundColor(new com.itextpdf.text.BaseColor(230, 230, 250));
-        table.addCell(cell);
-    }
-
-    private void addNormalCell(com.itextpdf.text.pdf.PdfPTable table, String text, com.itextpdf.text.Font font, int align) {
-        com.itextpdf.text.pdf.PdfPCell cell = new com.itextpdf.text.pdf.PdfPCell(new com.itextpdf.text.Phrase(text, font));
-        cell.setHorizontalAlignment(align);
-        table.addCell(cell);
-    }
-
-    // Model dịch vụ hóa đơn
-    public static class InvoiceItem {
-        public String tenDichVu;
-        public int soLuong;
-        public String donVi;
-        public double donGia;
-        public double thanhTien;
-
-        public InvoiceItem(String tenDichVu, int soLuong, String donVi, double donGia) {
-            this.tenDichVu = tenDichVu;
-            this.soLuong = soLuong;
-            this.donVi = donVi;
-            this.donGia = donGia;
-            this.thanhTien = soLuong * donGia;
-        }
-    }
-
-    // --- View cho form hóa đơn ---
-    public static class InvoiceFormView {
-        public ComboBox<String> cbTenant = new ComboBox<>();
-        public TextField txtRoom = new TextField();
-        public TextField txtPhone = new TextField();
-        public TextField txtAddress = new TextField();
-        public TextField txtChuHo = new TextField();
-        public TextField txtMessage = new TextField();
-        public TextField txtTotal = new TextField();
-        public Button btnSendInvoice = new Button("📧 Gửi hóa đơn & thông báo");
-        public Label lblNotifyStatus = new Label();
-
-        // Table dịch vụ
-        public TableView<InvoiceItem> tblServices = new TableView<>();
-        public ObservableList<InvoiceItem> items = FXCollections.observableArrayList();
-
-        public Node getView(List<String> tenantNames) {
-            cbTenant.setItems(FXCollections.observableArrayList(tenantNames));
-            cbTenant.setPromptText("Chọn người thuê");
-            cbTenant.setPrefHeight(38);
-
-            txtRoom.setPromptText("Phòng");
-            txtRoom.setPrefHeight(38);
-            txtRoom.setEditable(false);
-
-            txtPhone.setPromptText("SĐT");
-            txtPhone.setPrefHeight(38);
-            txtPhone.setEditable(false);
-
-            txtAddress.setPromptText("Địa chỉ thuê");
-            txtAddress.setPrefHeight(38);
-            txtAddress.setEditable(false);
-
-            txtChuHo.setPromptText("Chủ hộ");
-            txtChuHo.setPrefHeight(38);
-
-            txtMessage.setPromptText("Nội dung thông báo gửi kèm hóa đơn");
-            txtMessage.setPrefHeight(38);
-
-            txtTotal.setPromptText("Tổng tiền");
-            txtTotal.setPrefHeight(38);
-            txtTotal.setEditable(false);
-            txtTotal.setStyle("-fx-background-color: #e0f7fa;");
-
-            // Table dịch vụ
-            TableColumn<InvoiceItem, String> colDichVu = new TableColumn<>("Nội dung");
-            colDichVu.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().tenDichVu));
-            colDichVu.setCellFactory(TextFieldTableCell.forTableColumn());
-            colDichVu.setOnEditCommit(e -> e.getRowValue().tenDichVu = e.getNewValue());
-
-            TableColumn<InvoiceItem, Integer> colSoLuong = new TableColumn<>("Số lượng");
-            colSoLuong.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(data.getValue().soLuong).asObject());
-            colSoLuong.setCellFactory(TextFieldTableCell.forTableColumn(new javafx.util.converter.IntegerStringConverter()));
-            colSoLuong.setOnEditCommit(e -> e.getRowValue().soLuong = e.getNewValue());
-
-            TableColumn<InvoiceItem, String> colDonVi = new TableColumn<>("Đơn vị");
-            colDonVi.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().donVi));
-            colDonVi.setCellFactory(TextFieldTableCell.forTableColumn());
-            colDonVi.setOnEditCommit(e -> e.getRowValue().donVi = e.getNewValue());
-
-            TableColumn<InvoiceItem, Double> colDonGia = new TableColumn<>("Đơn giá");
-            colDonGia.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().donGia).asObject());
-            colDonGia.setCellFactory(TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
-            colDonGia.setOnEditCommit(e -> e.getRowValue().donGia = e.getNewValue());
-
-            TableColumn<InvoiceItem, Double> colThanhTien = new TableColumn<>("Thành tiền");
-            colThanhTien.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().thanhTien).asObject());
-            colThanhTien.setCellFactory(TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
-            colThanhTien.setEditable(false);
-
-            tblServices.getColumns().addAll(colDichVu, colSoLuong, colDonVi, colDonGia, colThanhTien);
-            tblServices.setItems(items);
-            tblServices.setEditable(true);
-            tblServices.setPrefHeight(180);
-
-            // Nút thêm dịch vụ
-            Button btnAddService = new Button("Thêm dịch vụ");
-            btnAddService.setOnAction(e -> items.add(new InvoiceItem("Tiền nhà", 1, "tháng", 0)));
-
-            // Nút xóa dịch vụ
-            Button btnRemoveService = new Button("Xóa dịch vụ");
-            btnRemoveService.setOnAction(e -> {
-                InvoiceItem selected = tblServices.getSelectionModel().getSelectedItem();
-                if (selected != null) items.remove(selected);
-            });
-
-            HBox serviceButtons = new HBox(10, btnAddService, btnRemoveService);
-
-            GridPane form = new GridPane();
-            form.setHgap(18);
-            form.setVgap(14);
-            form.setPadding(new Insets(18, 18, 18, 18));
-            form.setStyle("-fx-background-color: #fff; -fx-background-radius: 12;");
-
-            form.add(new Label("Người thuê:"), 0, 0); form.add(cbTenant, 1, 0);
-            form.add(new Label("Phòng:"), 0, 1); form.add(txtRoom, 1, 1);
-            form.add(new Label("SĐT:"), 0, 2); form.add(txtPhone, 1, 2);
-            form.add(new Label("Địa chỉ thuê:"), 0, 3); form.add(txtAddress, 1, 3);
-            form.add(new Label("Chủ hộ:"), 0, 4); form.add(txtChuHo, 1, 4);
-
-            VBox serviceBox = new VBox(8, tblServices, serviceButtons);
-            form.add(new Label("Dịch vụ:"), 0, 5); form.add(serviceBox, 1, 5);
-
-            form.add(new Label("Tổng tiền:"), 0, 6); form.add(txtTotal, 1, 6);
-            form.add(new Label("Nội dung thông báo:"), 0, 7); form.add(txtMessage, 1, 7);
-
-            VBox invoicePane = new VBox(18, form, btnSendInvoice, lblNotifyStatus);
-            invoicePane.setPadding(new Insets(24));
-            invoicePane.setStyle("-fx-background-color: #f8fafc; -fx-background-radius: 18;");
-
-            return invoicePane;
-        }
-    }
-}*/
 // --- Gửi thông báo ---
 // Lấy danh sách người thuê từ DB
 private List<String> getTenantNamesFromDB() {
