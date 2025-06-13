@@ -2,7 +2,9 @@ package com.roommanagement.auth;
 
 import com.roommanagement.auth.AdminModel.*;
 import com.roommanagement.database.DatabaseManager;
-
+import com.roommanagement.notification.InvoiceService;
+import com.roommanagement.notification.NotificationService;
+import java.util.Map;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,14 +16,16 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
+import com.roommanagement.auth.AdminService.BillEntry;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+ 
 
 public class AdminView extends Application {
+    private final NotificationService notificationService = new NotificationService();
     private final AdminService service = new AdminService();
     private Stage primaryStage;
 
@@ -621,7 +625,7 @@ private Pane getTenantManagementPane() {
     return tenantPane;
 }
 
-
+// --- Quản lý hóa đơn ---
 private Pane getBillManagementPaneStyled() {
     VBox billPane = new VBox(18);
     billPane.setPadding(new Insets(32, 32, 32, 32));
@@ -652,10 +656,10 @@ private Pane getBillManagementPaneStyled() {
 
     // TableView styled
     TableView<BillEntry> billTable = new TableView<>(billList);
-    billTable.setPrefHeight(220); // Có thể để nhỏ cho gọn
+    billTable.setPrefHeight(220); 
     billTable.setMinHeight(120);
-    billTable.setMaxHeight(Double.MAX_VALUE); // Cho phép mở rộng tối đa khi phóng to cửa sổ
-    VBox.setVgrow(billTable, Priority.ALWAYS); // Cho phép TableView mở rộng trong VBox
+    billTable.setMaxHeight(Double.MAX_VALUE); 
+    VBox.setVgrow(billTable, Priority.ALWAYS); 
 
     TableColumn<BillEntry, String> colTenant = new TableColumn<>("Người thuê");
     colTenant.setCellValueFactory(new PropertyValueFactory<>("tenantName"));
@@ -687,9 +691,7 @@ private Pane getBillManagementPaneStyled() {
             setGraphic(empty ? null : btnDelete);
         }
     });
-
-    billTable.getColumns().setAll(List.of(colTenant, colAmount, colDesc, colDelete));
-
+    
     // Luôn load lại dữ liệu từ DB khi khởi tạo
     billList.setAll(service.loadBills());
 
@@ -741,44 +743,268 @@ private Pane getBillManagementPaneStyled() {
     return billPane;
 }
 
+
     // --- Gửi thông báo ---
-    private Pane getNotifyPaneStyled() {
-        VBox notifyPane = new VBox(18);
-        notifyPane.setPadding(new Insets(32, 32, 32, 32));
+    /*private Pane getNotifyPaneStyled() {
+    VBox notifyPane = new VBox(18);
+    notifyPane.setPadding(new Insets(32, 32, 32, 32));
+    notifyPane.setStyle("-fx-background-color: #fff; -fx-background-radius: 18;");
+
+    Label lblTitle = new Label("Gửi Hóa Đơn & Thông Báo");
+    lblTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 0 0 12 0;");
+
+    // --- Form nhập thông tin hóa đơn ---
+    List<String> tenantNames = service.getTenantNames();
+    ComboBox<String> cbTenant = new ComboBox<>(FXCollections.observableArrayList(tenantNames));
+    cbTenant.setPromptText("Chọn người thuê");
+    cbTenant.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtRoom = new TextField();
+    txtRoom.setPromptText("Phòng");
+    txtRoom.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtPhone = new TextField();
+    txtPhone.setPromptText("SĐT");
+    txtPhone.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtAddress = new TextField();
+    txtAddress.setPromptText("Địa chỉ thuê");
+    txtAddress.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtDesc = new TextField();
+    txtDesc.setPromptText("Mô tả dịch vụ/hàng hóa");
+    txtDesc.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtQty = new TextField();
+    txtQty.setPromptText("Số lượng");
+    txtQty.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtUnitPrice = new TextField();
+    txtUnitPrice.setPromptText("Đơn giá");
+    txtUnitPrice.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    TextField txtTotal = new TextField();
+    txtTotal.setPromptText("Tổng tiền");
+    txtTotal.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    // Tự động tính tổng tiền khi nhập số lượng và đơn giá
+    txtQty.textProperty().addListener((obs, oldVal, newVal) -> {
+        try {
+            int qty = Integer.parseInt(newVal);
+            double price = Double.parseDouble(txtUnitPrice.getText());
+            txtTotal.setText(String.valueOf(qty * price));
+        } catch (Exception ex) {
+            txtTotal.setText("");
+        }
+    });
+    txtUnitPrice.textProperty().addListener((obs, oldVal, newVal) -> {
+        try {
+            int qty = Integer.parseInt(txtQty.getText());
+            double price = Double.parseDouble(newVal);
+            txtTotal.setText(String.valueOf(qty * price));
+        } catch (Exception ex) {
+            txtTotal.setText("");
+        }
+    });
+
+    // --- Form gửi thông báo ---
+    TextField txtMessage = new TextField();
+    txtMessage.setPromptText("Nội dung thông báo gửi kèm hóa đơn");
+    txtMessage.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+
+    Button btnSendInvoice = new Button("📧 Gửi hóa đơn & thông báo");
+    btnSendInvoice.setStyle(
+        "-fx-background-color: linear-gradient(to right, #43e97b, #38f9d7);" +
+        "-fx-text-fill: #fff; -fx-font-weight: bold; -fx-background-radius: 18; -fx-padding: 10 24 10 24; -fx-font-size: 16px;"
+    );
+    Label lblNotifyStatus = new Label();
+
+    // --- Sự kiện gửi hóa đơn & thông báo ---
+    btnSendInvoice.setOnAction(ev -> {
+        String tenant = cbTenant.getValue();
+        String room = txtRoom.getText().trim();
+        String phone = txtPhone.getText().trim();
+        String address = txtAddress.getText().trim();
+        String desc = txtDesc.getText().trim();
+        String qty = txtQty.getText().trim();
+        String unitPrice = txtUnitPrice.getText().trim();
+        String total = txtTotal.getText().trim();
+        String message = txtMessage.getText().trim();
+
+        if (tenant == null || tenant.isEmpty() || room.isEmpty() || phone.isEmpty() || address.isEmpty()
+                || desc.isEmpty() || qty.isEmpty() || unitPrice.isEmpty() || total.isEmpty() || message.isEmpty()) {
+            lblNotifyStatus.setText("Vui lòng nhập đầy đủ thông tin hóa đơn và thông báo!");
+            return;
+        }
+        try {
+            // 1. Xuất file hóa đơn PDF
+            String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
+            exportInvoiceToPDF(filePath, tenant, room, phone, address, desc, qty, unitPrice, total);
+
+            // 2. Lưu thông báo vào database (có thể lưu đường dẫn file hóa đơn nếu muốn)
+            try (Connection conn = DatabaseManager.connect()) {
+                String sql = "INSERT INTO notifications (tenant_name, message) VALUES (?, ?)";
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, tenant);
+                pstmt.setString(2, message + " [File hóa đơn: " + filePath + "]");
+                pstmt.executeUpdate();
+            }
+
+            lblNotifyStatus.setText("Đã gửi hóa đơn và thông báo cho " + tenant + ". File: " + filePath);
+            java.awt.Desktop.getDesktop().open(new java.io.File(filePath));
+
+            // Xóa trắng form
+            cbTenant.setValue(null);
+            txtRoom.clear();
+            txtPhone.clear();
+            txtAddress.clear();
+            txtDesc.clear();
+            txtQty.clear();
+            txtUnitPrice.clear();
+            txtTotal.clear();
+            txtMessage.clear();
+        } catch (Exception ex) {
+            lblNotifyStatus.setText("Lỗi khi gửi hóa đơn/thông báo: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    });
+
+    // --- Sắp xếp giao diện ---
+    GridPane form = new GridPane();
+    form.setHgap(18);
+    form.setVgap(14);
+    form.setPadding(new Insets(18, 18, 18, 18));
+    form.setStyle("-fx-background-color: #f8fafc; -fx-background-radius: 12;");
+
+    form.add(new Label("Người thuê:"), 0, 0); form.add(cbTenant, 1, 0);
+    form.add(new Label("Phòng:"), 0, 1); form.add(txtRoom, 1, 1);
+    form.add(new Label("SĐT:"), 0, 2); form.add(txtPhone, 1, 2);
+    form.add(new Label("Địa chỉ thuê:"), 0, 3); form.add(txtAddress, 1, 3);
+    form.add(new Label("Mô tả:"), 0, 4); form.add(txtDesc, 1, 4);
+    form.add(new Label("Số lượng:"), 0, 5); form.add(txtQty, 1, 5);
+    form.add(new Label("Đơn giá:"), 0, 6); form.add(txtUnitPrice, 1, 6);
+    form.add(new Label("Tổng tiền:"), 0, 7); form.add(txtTotal, 1, 7);
+    form.add(new Label("Nội dung thông báo:"), 0, 8); form.add(txtMessage, 1, 8);
+
+    notifyPane.getChildren().setAll(lblTitle, form, btnSendInvoice, lblNotifyStatus);
+    return notifyPane;
+}
+
+// Hàm xuất hóa đơn PDF (dùng iText, cần thêm thư viện iText vào project)
+private void exportInvoiceToPDF(String filePath, String tenant, String room, String phone, String address, String desc, String qty, String unitPrice, String total) throws Exception {
+    com.itextpdf.text.Document document = new com.itextpdf.text.Document();
+    com.itextpdf.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(filePath));
+    document.open();
+
+    com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 20, com.itextpdf.text.Font.BOLD);
+    com.itextpdf.text.Paragraph title = new com.itextpdf.text.Paragraph("HÓA ĐƠN", titleFont);
+    title.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+    document.add(title);
+
+    document.add(new com.itextpdf.text.Paragraph("Ngày: " + java.time.LocalDate.now()));
+    document.add(new com.itextpdf.text.Paragraph("Người thuê: " + tenant));
+    document.add(new com.itextpdf.text.Paragraph("Phòng: " + room));
+    document.add(new com.itextpdf.text.Paragraph("SĐT: " + phone));
+    document.add(new com.itextpdf.text.Paragraph("Địa chỉ thuê: " + address));
+    document.add(new com.itextpdf.text.Paragraph(" "));
+
+    com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(4);
+    table.addCell("QTY");
+    table.addCell("DESCRIPTION");
+    table.addCell("UNIT PRICE");
+    table.addCell("LINE TOTAL");
+    table.addCell(qty);
+    table.addCell(desc);
+    table.addCell(unitPrice);
+    table.addCell(total);
+
+    document.add(table);
+    document.add(new com.itextpdf.text.Paragraph("TỔNG: " + total));
+    document.close();
+}*/
+
+// --- Gửi thông báo ---
+private List<String> getTenantNamesFromDB() {
+    List<String> tenantNames = new java.util.ArrayList<>();
+    try (java.sql.Connection conn = com.roommanagement.database.DatabaseManager.connect();
+         java.sql.Statement stmt = conn.createStatement();
+         java.sql.ResultSet rs = stmt.executeQuery("SELECT name FROM tenants")) {
+        while (rs.next()) {
+            tenantNames.add(rs.getString("name"));
+        }
+    } catch (java.sql.SQLException ex) {
+        ex.printStackTrace();
+    }
+    return tenantNames;
+}
+    public Pane getNotifyPaneStyled() {
+        VBox notifyPane = new VBox(24);
+        notifyPane.setPadding(new Insets(32));
         notifyPane.setStyle("-fx-background-color: #fff; -fx-background-radius: 18;");
 
-        Label lblTitle = new Label("Gửi Thông Báo");
-        lblTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 0 0 12 0;");
+        Label lblTitle = new Label("🔔 GỬI THÔNG BÁO");
+        lblTitle.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #185a9d; -fx-padding: 0 0 18 0;");
 
-        TextField txtTenantName = new TextField();
-        txtTenantName.setPromptText("Tên người thuê");
-        txtTenantName.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+        List<String> tenantNames = getTenantNamesFromDB();
+        ComboBox<String> cbTenant = new ComboBox<>(FXCollections.observableArrayList(tenantNames));
+        cbTenant.setPromptText("Chọn người thuê");
+        cbTenant.setStyle("-fx-background-radius: 10; -fx-padding: 8;");
 
-        TextField txtMessage = new TextField();
-        txtMessage.setPromptText("Nội dung thông báo");
-        txtMessage.setStyle("-fx-background-radius: 12; -fx-padding: 8;");
+        TextField txtPhone = new TextField(); txtPhone.setPromptText("SĐT"); txtPhone.setEditable(false);
+        TextField txtAddress = new TextField(); txtAddress.setPromptText("Địa chỉ thuê"); txtAddress.setEditable(false);
 
-        Button btnSend = new Button("📧 Gửi thông báo");
-        btnSend.setStyle(
-            "-fx-background-color: linear-gradient(to right, #43e97b, #38f9d7);" +
-            "-fx-text-fill: #fff; -fx-font-weight: bold; -fx-background-radius: 18; -fx-padding: 10 24 10 24; -fx-font-size: 16px;"
-        );
-        Label lblNotifyStatus = new Label();
+        TextField txtMessage = new TextField(); txtMessage.setPromptText("Nội dung thông báo");
 
-        btnSend.setOnAction(ev -> {
-            String tenantName = txtTenantName.getText().trim();
-            String message = txtMessage.getText().trim();
-            if (tenantName.isEmpty() || message.isEmpty()) {
-                lblNotifyStatus.setText("Vui lòng nhập đủ tên người thuê và nội dung.");
-                return;
-            }
-            service.sendNotification(tenantName, message, lblNotifyStatus);
-            txtTenantName.clear();
-            txtMessage.clear();
+        // Khi chọn người thuê thì tự động điền thông tin
+        cbTenant.setOnAction(ev -> {
+            String tenant = cbTenant.getValue();
+            Map<String, String> info = notificationService.getTenantInfo(tenant);
+            txtPhone.setText(info.getOrDefault("phone", ""));
+            txtAddress.setText(info.getOrDefault("address", ""));
         });
 
-        notifyPane.getChildren().addAll(lblTitle, txtTenantName, txtMessage, btnSend, lblNotifyStatus);
-        return notifyPane;
+        Button btnSend = new Button("📧 Gửi thông báo");
+        btnSend.setStyle("-fx-background-color: #6a5af9; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 18; -fx-font-size: 16px; -fx-padding: 10 24 10 24;");
+        Label lblStatus = new Label();
+
+        btnSend.setOnAction(ev -> {
+            String tenant = cbTenant.getValue();
+            String message = txtMessage.getText();
+            if (tenant == null || tenant.isEmpty() || message.isEmpty()) {
+                lblStatus.setText("Vui lòng chọn người thuê và nhập nội dung.");
+                return;
+            }
+            boolean ok = notificationService.sendNotification(tenant, message);
+            if (ok) {
+                lblStatus.setText("Đã gửi thông báo cho " + tenant);
+                cbTenant.setValue(null);
+                txtPhone.clear();
+                txtAddress.clear();
+                txtMessage.clear();
+            } else {
+                lblStatus.setText("Lỗi khi gửi thông báo!");
+            }
+        });
+
+        GridPane form = new GridPane();
+        form.setHgap(14); form.setVgap(14);
+        form.add(new Label("👤 Người thuê:"), 0, 0); form.add(cbTenant, 1, 0);
+        form.add(new Label("📞 SĐT:"), 0, 1); form.add(txtPhone, 1, 1);
+        form.add(new Label("📍 Địa chỉ:"), 0, 2); form.add(txtAddress, 1, 2);
+        form.add(new Label("✉️ Nội dung:"), 0, 3); form.add(txtMessage, 1, 3);
+
+        VBox vbox = new VBox(18, lblTitle, form, btnSend, lblStatus);
+        vbox.setAlignment(Pos.TOP_CENTER);
+        vbox.setPadding(new Insets(24));
+        vbox.setStyle("-fx-background-color: #f8fafc; -fx-background-radius: 18;");
+
+        return vbox;
+    }
+
+    // Lấy danh sách người thuê từ DB (hoặc service)
+    private List<String> getTenantNamesDBFromDB() {
+        
+        return service.getTenantNames();
     }
 
     // --- Style TableView ---
