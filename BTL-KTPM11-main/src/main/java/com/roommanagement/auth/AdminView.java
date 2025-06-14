@@ -3,30 +3,40 @@ package com.roommanagement.auth;
 import com.roommanagement.auth.AdminModel.*;
 import com.roommanagement.database.DatabaseManager;
 import com.roommanagement.notification.NotificationService;
+import com.roommanagement.tenant.TenantInfo;
 import com.roommanagement.billing.InvoiceFormView;
 import com.roommanagement.billing.InvoiceFormController;
 
 import java.util.Map;
-
+import java.io.File;
 
 import javafx.application.Application;
 
+import javafx.scene.image.ImageView;
+import javafx.scene.image.Image;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
 import com.roommanagement.auth.AdminService.BillEntry;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-
+import java.net.URL;
 import java.util.List;
  
 
@@ -37,7 +47,8 @@ public class AdminView extends Application {
     private ObservableList<TenantEntry> tenantList = FXCollections.observableArrayList();
     private ObservableList<RoomEntry> roomList = FXCollections.observableArrayList();
     private ObservableList<BillEntry> billist = FXCollections.observableArrayList();
-
+    private Parent loginRoot;
+private TabPane tabPane;
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -175,19 +186,24 @@ public class AdminView extends Application {
         Label lblLoginStatus = new Label();
 
         btnLogin.setOnAction(e -> {
-            String username = txtLoginUsername.getText().trim();
-            String password = txtLoginPassword.getText().trim();
-            if(username.isEmpty() || password.isEmpty()) {
-                lblLoginStatus.setText("Vui lòng nhập thông tin đăng nhập.");
-            } else {
-                if(service.loginAdmin(username, password)) {
-                    lblLoginStatus.setText("Đăng nhập thành công!");
-                    showDashboard(username);
-                } else {
-                    lblLoginStatus.setText("Đăng nhập thất bại. Kiểm tra lại thông tin.");
-                }
-            }
-        });
+    String username = txtLoginUsername.getText().trim();
+    String password = txtLoginPassword.getText().trim();
+    if (username.isEmpty() || password.isEmpty()) {
+        lblLoginStatus.setText("Vui lòng nhập thông tin đăng nhập.");
+        Alert alert = new Alert(Alert.AlertType.ERROR, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.", ButtonType.OK);
+        alert.showAndWait();
+    } else {
+        if (service.loginAdmin(username, password)) {
+            lblLoginStatus.setText("Đăng nhập thành công!");
+            showDashboard(username);
+
+        } else {
+            lblLoginStatus.setText("Đăng nhập thất bại. Kiểm tra lại thông tin.");
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Đăng nhập thất bại. Kiểm tra lại tên đăng nhập hoặc mật khẩu.", ButtonType.OK);
+            alert.showAndWait();
+        }
+    }
+});
 
         loginPane.add(iconUserLogin, 0, 0);
         loginPane.add(new Label("Tên đăng nhập:"), 1, 0);
@@ -222,60 +238,270 @@ public class AdminView extends Application {
         primaryStage.setScene(authScene);
         primaryStage.show();
     }
-// --- Hiển thị Dashboard ---
+
+// Hiển thị giao diện Dashboard sau khi đăng nhập thành công
     private void showDashboard(String adminUsername) {
-        primaryStage.setTitle("Dashboard - " + adminUsername);
+    primaryStage.setTitle("Dashboard - " + adminUsername);
 
-        BorderPane bp = new BorderPane();
-        bp.setPadding(new Insets(0));
+    BorderPane bp = new BorderPane();
+    bp.setPadding(new Insets(0));
 
-        VBox sidebar = new VBox(18);
-        sidebar.setPadding(new Insets(32, 0, 32, 0));
-        sidebar.setStyle(
-            "-fx-background-color: linear-gradient(to bottom, #43cea2, #185a9d);" +
-            "-fx-background-radius: 24 0 0 24;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 16, 0, 2, 2);"
-        );
-        sidebar.setPrefWidth(240);
+    VBox sidebar = new VBox(18);
+    sidebar.setPadding(new Insets(32, 0, 32, 0));
+    sidebar.setStyle(
+        "-fx-background-color: linear-gradient(to bottom, #43cea2, #185a9d);" +
+        "-fx-background-radius: 24 0 0 24;" +
+        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 16, 0, 2, 2);"
+    );
+    sidebar.setPrefWidth(240);
+Button btnHome = createSidebarButton("🏠", "Home", false);
+Button btnAccount = createSidebarButton("👤", "Tài khoản", false);
+    Button btnTenant = createSidebarButton("👤", "Quản Lý Người Thuê", true);
+    Button btnRoom = createSidebarButton("🏠", "Quản Lý Phòng", false);
+    Button btnBill = createSidebarButton("💵", "Quản Lí Hóa Đơn", false);
+    Button btnNotify = createSidebarButton("🔔", "Gửi Thông Báo", false);
+    Button btnLogout = createSidebarButton("⏻", "Đăng Xuất", false);
+    btnLogout.setStyle(btnLogout.getStyle() + "-fx-background-color: #f7971e; -fx-text-fill: white;");
 
-        Button btnTenant = createSidebarButton("👤", "Quản Lý Người Thuê", true);
-        Button btnRoom = createSidebarButton("🏠", "Quản Lý Phòng", false);
-        Button btnBill = createSidebarButton("💵", "Tạo Hóa Đơn", false);
-        Button btnNotify = createSidebarButton("🔔", "Gửi Thông Báo", false);
-        Button btnLogout = createSidebarButton("⏻", "Đăng Xuất", false);
-        btnLogout.setStyle(btnLogout.getStyle() + "-fx-background-color: #f7971e; -fx-text-fill: white;");
+    sidebar.getChildren().add(btnHome); // Vị trí 0
+sidebar.getChildren().add(btnAccount); // Vị trí 1 (sau Home)
+sidebar.getChildren().addAll(btnTenant, btnRoom, btnBill, btnNotify); // Các nút chức năng còn lại
+Region spacer = new Region();
+VBox.setVgrow(spacer, Priority.ALWAYS);
+sidebar.getChildren().addAll(spacer, btnLogout); // Đăng xuất ở dưới cùng
+bp.setLeft(sidebar);
 
-        sidebar.getChildren().addAll(btnTenant, btnRoom, btnBill, btnNotify, btnLogout);
-        bp.setLeft(sidebar);
+    // Ảnh welcome ở trung tâm khi đăng nhập thành công
+   StackPane centerPane;
+URL imgUrl = getClass().getResource("/images/man-hinh.jpg");
+if (imgUrl == null) {
+    centerPane = new StackPane(new Label("Không tìm thấy ảnh welcome!")); // chỉ gán, không khai báo lại
+} else {
+    Image welcomeImg = new Image(imgUrl.toExternalForm());
+    ImageView welcomeImage = new ImageView(welcomeImg);
+    welcomeImage.setPreserveRatio(true);
+    welcomeImage.setSmooth(true);
+    welcomeImage.setCache(true);
+    centerPane = new StackPane(welcomeImage); // chỉ gán, không khai báo lại
+    centerPane.setStyle("-fx-background-color: #f7fafd; -fx-background-radius: 0 24 24 0;");
+    welcomeImage.fitWidthProperty().bind(centerPane.widthProperty());
+    welcomeImage.fitHeightProperty().bind(centerPane.heightProperty());
+}
+bp.setCenter(centerPane);
 
-        StackPane centerPane = new StackPane();
-        centerPane.setStyle("-fx-background-color: #f7fafd; -fx-background-radius: 0 24 24 0;");
-        bp.setCenter(centerPane);
 
-        btnTenant.setOnAction(e -> {
-            setSidebarActive(sidebar, btnTenant);
-            bp.setCenter(getTenantManagementPaneStyled());
+
+
+// Xử lý sự kiện cho các nút sidebar
+
+
+btnHome.setOnAction(e -> {
+    setSidebarActive(sidebar, btnHome);
+    bp.setCenter(centerPane); 
+});
+btnAccount.setOnAction(e -> {
+    setSidebarActive(sidebar, btnAccount);
+    bp.setCenter(getAccountPane(adminUsername));
+});
+btnTenant.setOnAction(e -> {
+    setSidebarActive(sidebar, btnTenant);
+    bp.setCenter(getTenantManagementPaneStyled());
+});
+btnRoom.setOnAction(e -> {
+    setSidebarActive(sidebar, btnRoom);
+    bp.setCenter(getRoomManagementPaneStyled());
+});
+btnBill.setOnAction(e -> {
+    setSidebarActive(sidebar, btnBill);
+    TabPane billTabPane = new TabPane();
+    Tab tabCreateBill = new Tab("Tạo hóa đơn", getBillManagementPaneStyled());
+    Tab tabArchive = new Tab("Lưu trữ hóa đơn", getBillArchivePane());
+    billTabPane.getTabs().addAll(tabCreateBill, tabArchive);
+    bp.setCenter(billTabPane);
+});
+btnNotify.setOnAction(e -> {
+    setSidebarActive(sidebar, btnNotify);
+    bp.setCenter(getNotifyPaneStyled());
+});
+btnLogout.setOnAction(e -> showAuthPane());
+
+Scene scene = new Scene(bp, 1100, 700);
+primaryStage.setScene(scene);
+primaryStage.show();
+}
+
+// Tạo giao diện tài khoản
+/*public Node getAccountPane(String username) {
+    VBox root = new VBox(24);
+    root.setPadding(new Insets(40, 0, 0, 0));
+    root.setAlignment(Pos.TOP_CENTER);
+
+    // Avatar tròn lớn với viền
+    ImageView avatar = new ImageView(service.getAvatarForUser(username));
+    avatar.setFitWidth(120);
+    avatar.setFitHeight(120);
+    avatar.setPreserveRatio(true);
+    avatar.setClip(new Circle(60, 60, 60)); // Bo tròn avatar
+
+    StackPane avatarPane = new StackPane(avatar);
+    avatarPane.setPrefSize(120, 120);
+    avatarPane.setStyle("-fx-effect: dropshadow(gaussian, #43cea2, 10, 0.2, 0, 2);");
+
+    Button btnChangeAvatar = new Button("🖼 Đổi ảnh");
+    btnChangeAvatar.setStyle("-fx-background-radius: 20; -fx-background-color: #43cea2; -fx-text-fill: white;");
+    btnChangeAvatar.setOnAction(e -> {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Chọn ảnh đại diện");
+        File file = fc.showOpenDialog(root.getScene().getWindow());
+        if (file != null) {
+            avatar.setImage(new Image(file.toURI().toString()));
+            service.saveAvatarForUser(username, file);
+        }
+    });
+
+    // Thông tin cá nhân
+    Label lblName = new Label(service.getDisplayName(username));
+    lblName.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+    Label lblPhone = new Label("📞 " + service.getPhone(username));
+    Label lblEmail = new Label("✉ " + service.getEmail(username));
+    VBox infoBox = new VBox(6, lblName, lblPhone, lblEmail);
+    infoBox.setAlignment(Pos.CENTER);
+
+    // Danh sách tài khoản đã đăng ký
+    Label lblList = new Label("Tài khoản đã đăng ký");
+    lblList.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 16 0 0 0;");
+    VBox accountListBox = new VBox(8);
+    accountListBox.setAlignment(Pos.TOP_CENTER);
+
+    for (String user : service.getAllUsernames()) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        Label userLabel = new Label(user);
+        userLabel.setStyle("-fx-font-size: 15px;");
+        Button btnMore = new Button("⋮");
+        btnMore.setStyle("-fx-background-radius: 50%; -fx-background-color: #e0e0e0;");
+        btnMore.setOnAction(ev -> {
+            ContextMenu menu = new ContextMenu();
+            MenuItem delete = new MenuItem("Xóa tài khoản");
+            delete.setOnAction(delEv -> {
+                if (!user.equals(username)) {
+                    service.deleteAccount(user);
+                    accountListBox.getChildren().remove(row);
+                }
+            });
+            menu.getItems().add(delete);
+            menu.show(btnMore, Side.BOTTOM, 0, 0);
         });
-        btnRoom.setOnAction(e -> {
-            setSidebarActive(sidebar, btnRoom);
-            bp.setCenter(getRoomManagementPaneStyled());
-        });
-        btnBill.setOnAction(e -> {
-            setSidebarActive(sidebar, btnBill);
-            bp.setCenter(getBillManagementPaneStyled());
-        });
-        btnNotify.setOnAction(e -> {
-            setSidebarActive(sidebar, btnNotify);
-            bp.setCenter(getNotifyPaneStyled());
-        });
-        btnLogout.setOnAction(e -> showAuthPane());
-
-        bp.setCenter(getTenantManagementPaneStyled());
-        Scene scene = new Scene(bp, 1100, 700);
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        row.getChildren().addAll(userLabel, btnMore);
+        accountListBox.getChildren().add(row);
     }
 
+    root.getChildren().addAll(avatarPane, btnChangeAvatar, infoBox, lblList, accountListBox);
+    return root;
+}*/
+public Node getAccountPane(String username) {
+    VBox root = new VBox(28);
+    root.setPadding(new Insets(40, 0, 0, 0));
+    root.setAlignment(Pos.TOP_CENTER);
+
+    // Avatar tròn lớn, viền sáng
+    ImageView avatar = new ImageView(service.getAvatarForUser(username));
+    avatar.setFitWidth(140);
+    avatar.setFitHeight(140);
+    avatar.setPreserveRatio(true);
+
+    Circle clip = new Circle(70, 70, 70);
+    avatar.setClip(clip);
+
+    // Viền sáng cho avatar
+    Circle border = new Circle(70, 70, 72);
+    border.setStroke(Color.web("#43cea2"));
+    border.setStrokeWidth(4);
+    border.setFill(Color.TRANSPARENT);
+
+    StackPane avatarPane = new StackPane(border, avatar);
+    avatarPane.setPrefSize(144, 144);
+
+    
+// Nút đổi ảnh
+Button btnChangeAvatar = new Button("🖼 Đổi ảnh");
+btnChangeAvatar.setStyle(
+    "-fx-background-radius: 20; " +
+    "-fx-background-color: linear-gradient(to right, #43cea2, #185a9d);" +
+    "-fx-text-fill: white; -fx-font-size: 15px; -fx-padding: 6 18;"
+);
+btnChangeAvatar.setOnAction(e -> {
+    FileChooser fc = new FileChooser();
+    fc.setTitle("Chọn ảnh đại diện");
+    File file = fc.showOpenDialog(root.getScene().getWindow());
+    if (file != null) {
+        avatar.setImage(new Image(file.toURI().toString()));
+        service.saveAvatarForUser(username, file);
+    }
+});
+
+// Nút xóa ảnh
+Button btnDeleteAvatar = new Button("🗑 Xóa ảnh");
+btnDeleteAvatar.setStyle(
+    "-fx-background-radius: 20; " +
+    "-fx-background-color: #e57373;" +
+    "-fx-text-fill: white; -fx-font-size: 15px; -fx-padding: 6 18;"
+);
+btnDeleteAvatar.setOnAction(e -> {
+    service.deleteAvatarForUser(username); // Xóa file ảnh
+    avatar.setImage(service.getAvatarForUser(username)); // Hiển thị lại ảnh mặc định ngay lập tức
+});
+// Đặt hai nút cạnh nhau
+HBox avatarBtnBox = new HBox(12, btnChangeAvatar, btnDeleteAvatar);
+avatarBtnBox.setAlignment(Pos.CENTER);
+
+
+    // Thông tin cá nhân
+    Label lblName = new Label(service.getDisplayName(username));
+    lblName.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-padding: 10 0 0 0;");
+    Label lblPhone = new Label("📞 " + service.getPhone(username));
+    lblPhone.setStyle("-fx-font-size: 18px;");
+    Label lblEmail = new Label("✉ " + service.getEmail(username));
+    lblEmail.setStyle("-fx-font-size: 18px;");
+    VBox infoBox = new VBox(8, lblName, lblPhone, lblEmail);
+    infoBox.setAlignment(Pos.CENTER);
+
+    // Danh sách tài khoản đã đăng ký
+    Label lblList = new Label("Tài khoản đã đăng ký");
+    lblList.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 24 0 0 0;");
+    VBox accountListBox = new VBox(12);
+    accountListBox.setAlignment(Pos.TOP_CENTER);
+
+    for (String user : service.getAllUsernames()) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        Label userLabel = new Label(user);
+        userLabel.setStyle("-fx-font-size: 17px;");
+        Button btnMore = new Button("⋮");
+        btnMore.setStyle(
+            "-fx-background-radius: 50%; -fx-background-color: #e0e0e0; -fx-font-size: 18px; -fx-min-width: 36px; -fx-min-height: 36px;"
+        );
+        btnMore.setOnAction(ev -> {
+            ContextMenu menu = new ContextMenu();
+            MenuItem delete = new MenuItem("Xóa tài khoản");
+            delete.setOnAction(delEv -> {
+                if (!user.equals(username)) {
+                    service.deleteAccount(user);
+                    accountListBox.getChildren().remove(row);
+                }
+            });
+            menu.getItems().add(delete);
+            menu.show(btnMore, Side.BOTTOM, 0, 0);
+        });
+        row.getChildren().addAll(userLabel, btnMore);
+        accountListBox.getChildren().add(row);
+    }
+
+    root.getChildren().addAll(avatarPane, avatarBtnBox, infoBox, lblList, accountListBox);
+    return root;
+}
+
+    // Tạo giao diện thông báo
     private Button createSidebarButton(String icon, String text, boolean active) {
         Label iconLabel = new Label(icon);
         iconLabel.setStyle("-fx-font-size: 18px; -fx-padding: 0 8 0 0;");
@@ -351,7 +577,6 @@ public class AdminView extends Application {
         }
     }
 // --- Quản lý phòng ---
-// ...existing code...
 
     private Pane getRoomManagementPaneStyled() {
     Pane pane = getRoomManagementPane(); 
@@ -632,14 +857,140 @@ private Pane getTenantManagementPane() {
     return tenantPane;
 }
 
-    // --- Quản lý hóa đơn ---
-
-        public Node getBillManagementPaneStyled() {
+// --- Quản lý hóa đơn ---
+    
+    public Node getBillManagementPaneStyled() {
     InvoiceFormView view = new InvoiceFormView();
     List<String> tenantNames = service.getTenantNames();
     InvoiceFormController controller = new InvoiceFormController(service, view);
     return view.getView(tenantNames);
+
 }
+     
+// Hiển thị danh sách hóa đơn của từng người thuê
+    private void showTenantInvoiceStage(String tenantName) {
+    Stage stage = new Stage();
+    VBox root = new VBox(10);
+    root.setPadding(new Insets(20));
+
+    // Lấy thông tin người thuê (giả sử có hàm getTenantInfo)
+
+// Lấy thông tin người thuê
+TenantInfo info = service.getTenantInfo(tenantName);
+
+Label infoLabel = new Label(
+    "Tên: " + tenantName + "\n" +
+    "Phòng: " + info.getRoomName() + "\n" +
+    "SĐT: " + info.getPhone() + "\n" +
+    "Địa chỉ: " + info.getAddress()
+);
+
+    // Lấy danh sách file hóa đơn của khách này (theo định dạng mới)
+    File invoiceDir = new File("invoices");
+    File[] files = invoiceDir.listFiles((dir, name) ->
+        name.startsWith(tenantName + "_") && name.endsWith(".pdf")
+    );
+
+    ListView<File> fileList = new ListView<>();
+    if (files != null) fileList.getItems().addAll(files);
+
+    fileList.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
+        @Override
+        protected void updateItem(File item, boolean empty) {
+            super.updateItem(item, empty);
+            setText(empty || item == null ? null : item.getName());
+        }
+    });
+
+    // Khi click vào file, mở file hóa đơn
+    fileList.setOnMouseClicked(e -> {
+        File selectedFile = fileList.getSelectionModel().getSelectedItem();
+        if (selectedFile != null) {
+            try {
+                java.awt.Desktop.getDesktop().open(selectedFile);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    });
+    
+
+    // Nút copy đường dẫn
+   /* Button btnCopyPath = new Button("Copy đường dẫn");
+    btnCopyPath.setOnAction(e -> {
+        File selectedFile = fileList.getSelectionModel().getSelectedItem();
+        if (selectedFile != null) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(selectedFile.getAbsolutePath());
+            clipboard.setContent(content);
+        }
+    });
+
+    root.getChildren().addAll(infoLabel, new Label("Hóa đơn đã tạo:"), fileList, btnCopyPath);
+
+    stage.setScene(new Scene(root, 400, 400));
+    stage.setTitle("Thông tin & hóa đơn: " + tenantName);
+    stage.show();
+}*/
+// ...existing code...
+
+Button btnCopyPath = new Button("Copy đường dẫn");
+btnCopyPath.setOnAction(e -> {
+    File selectedFile = fileList.getSelectionModel().getSelectedItem();
+    if (selectedFile != null) {
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(selectedFile.getAbsolutePath());
+        clipboard.setContent(content);
+    }
+});
+
+// Nút xóa hóa đơn
+Button btnDelete = new Button("Xóa hóa đơn");
+btnDelete.setOnAction(e -> {
+    File selectedFile = fileList.getSelectionModel().getSelectedItem();
+    if (selectedFile != null) {
+        boolean deleted = selectedFile.delete();
+        if (deleted) {
+            fileList.getItems().remove(selectedFile);
+        } else {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Không thể xóa file hóa đơn!", ButtonType.OK);
+            alert.showAndWait();
+        }
+    }
+});
+
+HBox buttonBox = new HBox(10, btnCopyPath, btnDelete);
+
+root.getChildren().addAll(infoLabel, new Label("Hóa đơn đã tạo:"), fileList, buttonBox);
+
+stage.setScene(new Scene(root, 400, 400));
+stage.setTitle("Thông tin & hóa đơn: " + tenantName);
+stage.show();
+    }
+
+public Node getBillArchivePane() {
+    VBox root = new VBox(10);
+    root.setPadding(new Insets(20));
+
+    Label title = new Label("Tra cứu hóa đơn");
+    title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+    ListView<String> tenantList = new ListView<>();
+    tenantList.setItems(FXCollections.observableArrayList(service.getTenantNames()));
+
+    tenantList.setOnMouseClicked(e -> {
+        String selectedTenant = tenantList.getSelectionModel().getSelectedItem();
+        if (selectedTenant != null) {
+            showTenantInvoiceStage(selectedTenant);
+        }
+    });
+
+    root.getChildren().addAll(title, new Label("Chọn người thuê:"), tenantList);
+    return root;
+}
+    
 
     
 // --- Gửi thông báo ---

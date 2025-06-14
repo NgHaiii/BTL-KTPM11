@@ -3,7 +3,7 @@ package com.roommanagement.billing;
 import com.roommanagement.auth.AdminService;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
-
+import com.roommanagement.tenant.TenantInfo;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,10 +22,10 @@ public class InvoiceFormController {
         view.cbTenant.setOnAction(ev -> {
             String tenant = view.cbTenant.getValue();
             if (tenant != null && !tenant.isEmpty()) {
-                AdminService.TenantInfo info = service.getTenantInfo(tenant);
-                view.txtRoom.setText(info.room);
-                view.txtPhone.setText(info.phone);
-                view.txtAddress.setText(info.address);
+                TenantInfo info = service.getTenantInfo(tenant);
+                view.txtRoom.setText(info.getRoomName());
+                view.txtPhone.setText(info.getPhone());
+                view.txtAddress.setText(info.getAddress());
             }
         });
 
@@ -67,7 +67,7 @@ public class InvoiceFormController {
             for (InvoiceItem item : view.items) tongTien += item.thanhTien;
 
             // 1. Xuất file hóa đơn PDF
-            String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
+            /*String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
             exportInvoiceToPDF(filePath, tenant, room, phone, address, chuHo, new ArrayList<>(view.items), tongTien);
 
             // 2. Lưu thông báo vào database
@@ -80,7 +80,26 @@ public class InvoiceFormController {
                 } catch (Exception e) {
                     // ignore
                 }
-            });
+            });*/
+            String monthYear = java.time.LocalDate.now().getMonthValue() + "_" + java.time.LocalDate.now().getYear();
+String dirPath = "invoices";
+new java.io.File(dirPath).mkdirs();
+String filePath = dirPath + "/" + tenant + "_" + monthYear + ".pdf";
+
+// Chỉ lưu hóa đơn, không gửi thông báo nữa
+exportInvoiceToPDF(filePath, tenant, room, phone, address, chuHo, new ArrayList<>(view.items), tongTien);
+
+// Thông báo trạng thái lưu hóa đơn
+view.lblNotifyStatus.setText("Đã lưu hóa đơn cho " + tenant + ". File: " + filePath);
+
+// Mở file hóa đơn sau khi lưu (nếu muốn)
+Platform.runLater(() -> {
+    try {
+        java.awt.Desktop.getDesktop().open(new java.io.File(filePath));
+    } catch (Exception e) {
+        // ignore
+    }
+});
 
             // Xóa trắng form
             view.cbTenant.setValue(null);

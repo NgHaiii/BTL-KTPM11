@@ -4,8 +4,11 @@ import com.roommanagement.database.DatabaseManager;
 import com.roommanagement.auth.AdminModel.RoomEntry;
 /*import com.roommanagement.auth.AdminModel.BillEntry;*/
 import com.roommanagement.auth.AdminModel.TenantEntry;
-import javafx.scene.control.Label;
+/*import com.roommanagement.auth.AdminService.TenantInfo;*/
+import com.roommanagement.tenant.TenantInfo;
 
+import javafx.scene.control.Label;
+import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -280,15 +283,68 @@ public List<BillEntry> loadBills() {
         }
         return bills;
     }
+    // Lấy tên hiển thị cho người dùng
+    public String getDisplayName(String username) {
+    // Nếu bạn có trường tên hiển thị riêng, trả về trường đó
+    // Nếu không, trả về username
+    return username;
+}
 
-    // Model thông tin người thuê
-    public static class TenantInfo {
-        public final String room, phone, address;
-        public TenantInfo(String room, String phone, String address) {
-            this.room = room; this.phone = phone; this.address = address;
+public javafx.scene.image.Image getAvatarForUser(String username) {
+    try {
+        // Nếu có file avatar riêng cho user
+        File avatarFile = new File("avatars", username + ".png");
+        if (avatarFile.exists()) {
+            return new javafx.scene.image.Image(avatarFile.toURI().toString());
         }
+        // Nếu không có, trả về ảnh mặc định trong resources
+        java.net.URL url = getClass().getResource("/images/default-avatar.png");
+        if (url != null) {
+            return new javafx.scene.image.Image(url.toExternalForm());
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+    // Nếu vẫn không có, trả về null hoặc một ảnh rỗng
+    return new javafx.scene.image.Image("https://via.placeholder.com/120"); // Ảnh placeholder online
+}
 
+public void saveAvatarForUser(String username, File file) {
+    try {
+        File dir = new File("avatars");
+        if (!dir.exists()) dir.mkdirs();
+        File dest = new File(dir, username + ".png");
+        java.nio.file.Files.copy(
+            file.toPath(),
+            dest.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        );
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+public String getPhone(String username) {
+    
+    return "Chưa cập nhật";
+}
+public String getEmail(String username) {
+    
+    return "Chưa cập nhật";
+}
+
+public java.util.List<String> getAllUsernames() {
+    
+    return java.util.Arrays.asList("admin", "user1", "user2");
+}
+public void deleteAccount(String username) {
+    
+}
+public void deleteAvatarForUser(String username) {
+    File avatarFile = new File("avatars", username + ".png");
+    if (avatarFile.exists()) {
+        avatarFile.delete();
+    }
+}
     // Model hóa đơn
     public static class BillEntry {
         private final int id;

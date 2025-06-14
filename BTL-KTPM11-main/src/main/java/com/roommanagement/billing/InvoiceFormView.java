@@ -26,7 +26,7 @@ public class InvoiceFormView {
     public TextField txtChuHo = new TextField();
     public TextField txtMessage = new TextField();
     public TextField txtTotal = new TextField();
-    public Button btnSendInvoice = new Button("📧 Gửi hóa đơn & thông báo");
+    public Button btnSendInvoice = new Button("📧 Tạo hóa đơn");
     public Label lblNotifyStatus = new Label();
 
     public TableView<InvoiceFormController.InvoiceItem> tblServices = new TableView<>();
@@ -62,6 +62,7 @@ public class InvoiceFormView {
 
         // Table dịch vụ
         
+
         // Tạo ComboBox chọn loại dịch vụ
 ComboBox<String> serviceTypeBox = new ComboBox<>();
 serviceTypeBox.getItems().addAll("Tiền phòng", "Tiền điện nước", "Tiền dịch vụ");
@@ -87,11 +88,6 @@ colDichVu.setOnEditCommit(e -> e.getRowValue().tenDichVu = e.getNewValue());
         colDonVi.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().donVi));
         colDonVi.setCellFactory(TextFieldTableCell.forTableColumn());
         colDonVi.setOnEditCommit(e -> e.getRowValue().donVi = e.getNewValue());
-
-        /*TableColumn<InvoiceFormController.InvoiceItem, Double> colDonGia = new TableColumn<>("Đơn giá");
-        colDonGia.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().donGia).asObject());
-        colDonGia.setCellFactory(TextFieldTableCell.forTableColumn(new DoubleStringConverter()));
-        colDonGia.setOnEditCommit(e -> e.getRowValue().donGia = e.getNewValue());*/
 
         TableColumn<InvoiceFormController.InvoiceItem, Double> colThanhTien = new TableColumn<>("Thành tiền");
         colThanhTien.setCellValueFactory(data -> new javafx.beans.property.SimpleDoubleProperty(data.getValue().thanhTien).asObject());
