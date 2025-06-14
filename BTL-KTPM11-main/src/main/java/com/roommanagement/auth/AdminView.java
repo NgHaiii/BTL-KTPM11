@@ -330,76 +330,8 @@ primaryStage.setScene(scene);
 primaryStage.show();
 }
 
-// Tạo giao diện tài khoản
+// Tạo giao diện quản lý tài khoản admin
 /*public Node getAccountPane(String username) {
-    VBox root = new VBox(24);
-    root.setPadding(new Insets(40, 0, 0, 0));
-    root.setAlignment(Pos.TOP_CENTER);
-
-    // Avatar tròn lớn với viền
-    ImageView avatar = new ImageView(service.getAvatarForUser(username));
-    avatar.setFitWidth(120);
-    avatar.setFitHeight(120);
-    avatar.setPreserveRatio(true);
-    avatar.setClip(new Circle(60, 60, 60)); // Bo tròn avatar
-
-    StackPane avatarPane = new StackPane(avatar);
-    avatarPane.setPrefSize(120, 120);
-    avatarPane.setStyle("-fx-effect: dropshadow(gaussian, #43cea2, 10, 0.2, 0, 2);");
-
-    Button btnChangeAvatar = new Button("🖼 Đổi ảnh");
-    btnChangeAvatar.setStyle("-fx-background-radius: 20; -fx-background-color: #43cea2; -fx-text-fill: white;");
-    btnChangeAvatar.setOnAction(e -> {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Chọn ảnh đại diện");
-        File file = fc.showOpenDialog(root.getScene().getWindow());
-        if (file != null) {
-            avatar.setImage(new Image(file.toURI().toString()));
-            service.saveAvatarForUser(username, file);
-        }
-    });
-
-    // Thông tin cá nhân
-    Label lblName = new Label(service.getDisplayName(username));
-    lblName.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
-    Label lblPhone = new Label("📞 " + service.getPhone(username));
-    Label lblEmail = new Label("✉ " + service.getEmail(username));
-    VBox infoBox = new VBox(6, lblName, lblPhone, lblEmail);
-    infoBox.setAlignment(Pos.CENTER);
-
-    // Danh sách tài khoản đã đăng ký
-    Label lblList = new Label("Tài khoản đã đăng ký");
-    lblList.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 16 0 0 0;");
-    VBox accountListBox = new VBox(8);
-    accountListBox.setAlignment(Pos.TOP_CENTER);
-
-    for (String user : service.getAllUsernames()) {
-        HBox row = new HBox(10);
-        row.setAlignment(Pos.CENTER_LEFT);
-        Label userLabel = new Label(user);
-        userLabel.setStyle("-fx-font-size: 15px;");
-        Button btnMore = new Button("⋮");
-        btnMore.setStyle("-fx-background-radius: 50%; -fx-background-color: #e0e0e0;");
-        btnMore.setOnAction(ev -> {
-            ContextMenu menu = new ContextMenu();
-            MenuItem delete = new MenuItem("Xóa tài khoản");
-            delete.setOnAction(delEv -> {
-                if (!user.equals(username)) {
-                    service.deleteAccount(user);
-                    accountListBox.getChildren().remove(row);
-                }
-            });
-            menu.getItems().add(delete);
-            menu.show(btnMore, Side.BOTTOM, 0, 0);
-        });
-        row.getChildren().addAll(userLabel, btnMore);
-        accountListBox.getChildren().add(row);
-    }
-
-    root.getChildren().addAll(avatarPane, btnChangeAvatar, infoBox, lblList, accountListBox);
-    return root;
-}*/
-public Node getAccountPane(String username) {
     VBox root = new VBox(28);
     root.setPadding(new Insets(40, 0, 0, 0));
     root.setAlignment(Pos.TOP_CENTER);
@@ -499,7 +431,113 @@ avatarBtnBox.setAlignment(Pos.CENTER);
 
     root.getChildren().addAll(avatarPane, avatarBtnBox, infoBox, lblList, accountListBox);
     return root;
+}*/
+public Node getAccountPane(String username) {
+    VBox root = new VBox(28);
+    root.setPadding(new Insets(40, 0, 0, 0));
+    root.setAlignment(Pos.TOP_CENTER);
+
+    // Avatar tròn lớn, viền sáng
+    ImageView avatar = new ImageView(service.getAvatarForUser(username));
+    avatar.setFitWidth(140);
+    avatar.setFitHeight(140);
+    avatar.setPreserveRatio(true);
+
+    Circle clip = new Circle(70, 70, 70);
+    avatar.setClip(clip);
+
+    // Viền sáng cho avatar
+    Circle border = new Circle(70, 70, 72);
+    border.setStroke(Color.web("#43cea2"));
+    border.setStrokeWidth(4);
+    border.setFill(Color.TRANSPARENT);
+
+    StackPane avatarPane = new StackPane(border, avatar);
+    avatarPane.setPrefSize(144, 144);
+
+    // Nút đổi ảnh
+    Button btnChangeAvatar = new Button("🖼 Đổi ảnh");
+    btnChangeAvatar.setStyle(
+        "-fx-background-radius: 20; " +
+        "-fx-background-color: linear-gradient(to right, #43cea2, #185a9d);" +
+        "-fx-text-fill: white; -fx-font-size: 15px; -fx-padding: 6 18;"
+    );
+    btnChangeAvatar.setOnAction(e -> {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Chọn ảnh đại diện");
+        File file = fc.showOpenDialog(root.getScene().getWindow());
+        if (file != null) {
+            avatar.setImage(new Image(file.toURI().toString()));
+            service.saveAvatarForUser(username, file);
+        }
+    });
+
+    // Nút xóa ảnh
+    Button btnDeleteAvatar = new Button("🗑 Xóa ảnh");
+    btnDeleteAvatar.setStyle(
+        "-fx-background-radius: 20; " +
+        "-fx-background-color: #e57373;" +
+        "-fx-text-fill: white; -fx-font-size: 15px; -fx-padding: 6 18;"
+    );
+    btnDeleteAvatar.setOnAction(e -> {
+        service.deleteAvatarForUser(username); // Xóa file ảnh
+        avatar.setImage(service.getAvatarForUser(username)); // Hiển thị lại ảnh mặc định ngay lập tức
+    });
+    // Đặt hai nút cạnh nhau
+    HBox avatarBtnBox = new HBox(12, btnChangeAvatar, btnDeleteAvatar);
+    avatarBtnBox.setAlignment(Pos.CENTER);
+
+    // Thông tin cá nhân
+    Label lblName = new Label(service.getDisplayName(username));
+    lblName.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-padding: 10 0 0 0;");
+    Label lblPhone = new Label("📞 " + service.getPhone(username));
+    lblPhone.setStyle("-fx-font-size: 18px;");
+    Label lblEmail = new Label("✉ " + service.getEmail(username));
+    lblEmail.setStyle("-fx-font-size: 18px;");
+    VBox infoBox = new VBox(8, lblName, lblPhone, lblEmail);
+    infoBox.setAlignment(Pos.CENTER);
+
+    // Danh sách tài khoản đã đăng ký
+    Label lblList = new Label("Tài khoản đã đăng ký");
+    lblList.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 24 0 0 0;");
+    VBox accountListBox = new VBox(12);
+    accountListBox.setAlignment(Pos.TOP_CENTER);
+    
+Runnable[] refreshAccountList = new Runnable[1];
+refreshAccountList[0] = () -> {
+    accountListBox.getChildren().clear();
+    for (String user : service.getAllUsernames()) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        Label userLabel = new Label(user);
+        userLabel.setStyle("-fx-font-size: 17px;");
+        Button btnMore = new Button("⋮");
+        btnMore.setStyle(
+            "-fx-background-radius: 50%; -fx-background-color: #e0e0e0; -fx-font-size: 18px; -fx-min-width: 36px; -fx-min-height: 36px;"
+        );
+        btnMore.setOnAction(ev -> {
+            ContextMenu menu = new ContextMenu();
+            MenuItem delete = new MenuItem("Xóa tài khoản");
+            delete.setOnAction(delEv -> {
+                if (!user.equals(username)) {
+                    service.deleteAccount(user);
+                    refreshAccountList[0].run(); // Cập nhật lại danh sách ngay sau khi xóa
+                }
+            });
+            menu.getItems().add(delete);
+            menu.show(btnMore, Side.BOTTOM, 0, 0);
+        });
+        row.getChildren().addAll(userLabel, btnMore);
+        accountListBox.getChildren().add(row);
+    }
+};
+
+// Gọi lần đầu để hiển thị danh sách
+refreshAccountList[0].run();
+    root.getChildren().addAll(avatarPane, avatarBtnBox, infoBox, lblList, accountListBox);
+    return root;
 }
+
 
     // Tạo giao diện thông báo
     private Button createSidebarButton(String icon, String text, boolean active) {

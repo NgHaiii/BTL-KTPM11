@@ -31,7 +31,7 @@ public class AdminService {
     /*private final InvoiceService invoiceService = new InvoiceService();*/
 
     // Đăng ký Admin
-    public void registerAdmin(String email, String phone, String username, String password, Label lblRegStatus) {
+    /*public void registerAdmin(String email, String phone, String username, String password, Label lblRegStatus) {
         try (Connection conn = DatabaseManager.connect()) {
             String checkSql = "SELECT * FROM users WHERE username = ?";
             PreparedStatement checkStmt = conn.prepareStatement(checkSql);
@@ -53,7 +53,37 @@ public class AdminService {
             lblRegStatus.setText("Lỗi khi đăng ký: " + e.getMessage());
             e.printStackTrace();
         }
+    }*/
+    public void registerAdmin(String email, String phone, String username, String password, Label lblRegStatus) {
+    try (Connection conn = DatabaseManager.connect()) {
+        String checkSql = "SELECT * FROM users WHERE username = ?";
+        PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+        checkStmt.setString(1, username);
+        ResultSet rs = checkStmt.executeQuery();
+        if (rs.next()) {
+            lblRegStatus.setText("Tên đăng nhập đã tồn tại!");
+            return;
+        }
+        String sql = "INSERT INTO users (email, phone, username, password) VALUES (?, ?, ?, ?)";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, email);
+        pstmt.setString(2, phone);
+        pstmt.setString(3, username);
+        pstmt.setString(4, password);
+        pstmt.executeUpdate();
+
+        // Tạo thư mục dữ liệu riêng cho tài khoản mới
+        File userDir = new File("data/" + username);
+        if (!userDir.exists()) {
+            userDir.mkdirs();
+        }
+
+        lblRegStatus.setText("Đăng ký thành công! Bạn có thể đăng nhập.");
+    } catch (SQLException e) {
+        lblRegStatus.setText("Lỗi khi đăng ký: " + e.getMessage());
+        e.printStackTrace();
     }
+}
 
     // Thêm người thuê
     public void addTenant(int roomId, String name, String phone, String address) {
@@ -284,12 +314,6 @@ public List<BillEntry> loadBills() {
         return bills;
     }
     // Lấy tên hiển thị cho người dùng
-    public String getDisplayName(String username) {
-    // Nếu bạn có trường tên hiển thị riêng, trả về trường đó
-    // Nếu không, trả về username
-    return username;
-}
-
 public javafx.scene.image.Image getAvatarForUser(String username) {
     try {
         // Nếu có file avatar riêng cho user
@@ -324,17 +348,63 @@ public void saveAvatarForUser(String username, File file) {
     }
 }
 public String getPhone(String username) {
-    
-    return "Chưa cập nhật";
-}
-public String getEmail(String username) {
-    
+    try (Connection conn = DatabaseManager.connect()) {
+        PreparedStatement stmt = conn.prepareStatement("SELECT phone FROM users WHERE username = ?");
+        stmt.setString(1, username);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            String phone = rs.getString("phone");
+            return (phone != null && !phone.isEmpty()) ? phone : "Chưa cập nhật";
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
     return "Chưa cập nhật";
 }
 
-public java.util.List<String> getAllUsernames() {
-    
-    return java.util.Arrays.asList("admin", "user1", "user2");
+public String getEmail(String username) {
+    try (Connection conn = DatabaseManager.connect()) {
+        PreparedStatement stmt = conn.prepareStatement("SELECT email FROM users WHERE username = ?");
+        stmt.setString(1, username);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            String email = rs.getString("email");
+            return (email != null && !email.isEmpty()) ? email : "Chưa cập nhật";
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return "Chưa cập nhật";
+}
+
+public String getDisplayName(String username) {
+    // Nếu bạn có trường "display_name" trong bảng users thì lấy trường đó,
+    // nếu không thì trả về username hoặc email
+    try (Connection conn = DatabaseManager.connect()) {
+        PreparedStatement stmt = conn.prepareStatement("SELECT username FROM users WHERE username = ?");
+        stmt.setString(1, username);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            String name = rs.getString("username");
+            return (name != null && !name.isEmpty()) ? name : "Chưa cập nhật";
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return "Chưa cập nhật";
+}
+public List<String> getAllUsernames() {
+    List<String> usernames = new ArrayList<>();
+    try (Connection conn = DatabaseManager.connect()) {
+        PreparedStatement stmt = conn.prepareStatement("SELECT username FROM users");
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            usernames.add(rs.getString("username"));
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return usernames;
 }
 public void deleteAccount(String username) {
     
