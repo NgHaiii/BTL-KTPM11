@@ -19,22 +19,43 @@ public class AdminModel {
         public String getRoom() { return room.get(); }
     }
 
-    public static class RoomEntry {
-        private final SimpleStringProperty name, size, type, status;
-        public RoomEntry(String name, String size, String type, String status) {
-            this.name = new SimpleStringProperty(name);
-            this.size = new SimpleStringProperty(size);
-            this.type = new SimpleStringProperty(type);
-            this.status = new SimpleStringProperty(status);
-        }
-        public String getName() { return name.get(); }
-        public String getSize() { return size.get(); }
-        public String getType() { return type.get(); }
-        public String getStatus() { return status.get(); }
-        public void setStatus(String status) { this.status.set(status); }
-        @Override
-        public String toString() { return getName(); }
+public static class RoomEntry {
+    private String name;
+    private String size;
+    private String type;
+    private String status;
+    private String address;
+    private String chuHo;
+
+    public RoomEntry(String name, String size, String type, String status, String address, String chuHo) {
+        this.name = name;
+        this.size = size;
+        this.type = type;
+        this.status = status;
+        this.address = address;
+        this.chuHo = chuHo;
     }
+
+    public String getName() { return name; }
+    public String getSize() { return size; }
+    public String getType() { return type; }
+    public String getStatus() { return status; }
+    public String getAddress() { return address; }
+    public String getChuHo() { return chuHo; }
+
+    public void setName(String name) { this.name = name; }
+    public void setSize(String size) { this.size = size; }
+    public void setType(String type) { this.type = type; }
+    public void setStatus(String status) { this.status = status; }
+    public void setAddress(String address) { this.address = address; }
+    public void setChuHo(String chuHo) { this.chuHo = chuHo; }
+    
+    @Override
+    public String toString() {
+        return name; 
+    }
+}
+
 
     public static class BillEntry {
         private final SimpleIntegerProperty id;
@@ -52,6 +73,8 @@ public class AdminModel {
         public double getAmount() { return amount.get(); }
         public String getDescription() { return description.get(); }
         public void setStatus(String status) { this.status = status; }
+
+        
     }
 }
 

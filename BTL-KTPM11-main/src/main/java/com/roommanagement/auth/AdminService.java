@@ -2,25 +2,27 @@
 
 import com.roommanagement.database.DatabaseManager;
 import com.roommanagement.auth.AdminModel.RoomEntry;
-/*import com.roommanagement.auth.AdminModel.BillEntry;*/
 import com.roommanagement.auth.AdminModel.TenantEntry;
-/*import com.roommanagement.auth.AdminService.TenantInfo;*/
 import com.roommanagement.tenant.TenantInfo;
 
 import javafx.scene.control.Label;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.nio.charset.StandardCharsets;
 import java.io.InputStream;
-public class AdminService {
 
+public class AdminService {
     private List<Province> provinces;
+    private List<AdminModel.RoomEntry> roomList = new ArrayList<>();
 
     public AdminService() {
         try (InputStream is = getClass().getResourceAsStream("/vietnam-provinces.json")) {
@@ -71,7 +73,6 @@ public class AdminService {
         pstmt.setString(4, password);
         pstmt.executeUpdate();
 
-        // Tạo thư mục dữ liệu riêng cho tài khoản mới
         File userDir = new File("data/" + username);
         if (!userDir.exists()) {
             userDir.mkdirs();
@@ -192,29 +193,30 @@ public class AdminService {
         return list;
     }
 
+    
     // Load dữ liệu phòng
     public List<RoomEntry> loadRoomData() {
-        List<RoomEntry> list = new ArrayList<>();
-        try (Connection conn = DatabaseManager.connect();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT name, size, type, status FROM rooms")) {
-            while (rs.next()) {
-                list.add(new RoomEntry(
-                        rs.getString("name"),
-                        rs.getString("size"),
-                        rs.getString("type"),
-                        rs.getString("status")
-                ));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+    List<RoomEntry> list = new ArrayList<>();
+    try (Connection conn = DatabaseManager.connect();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery("SELECT name, size, type, status, address, chuHo FROM rooms")) {
+        while (rs.next()) {
+            list.add(new RoomEntry(
+                    rs.getString("name"),
+                    rs.getString("size"),
+                    rs.getString("type"),
+                    rs.getString("status"),
+                    rs.getString("address"),
+                    rs.getString("chuHo")
+            ));
         }
-        return list;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
-
+    return list;
+}
 
     // Load dữ liệu hóa đơn
-    // ...existing code...
 public List<BillEntry> loadBills() {
     List<BillEntry> bills = new ArrayList<>();
     try (Connection conn = DatabaseManager.connect();
@@ -252,6 +254,31 @@ public List<BillEntry> loadBills() {
         }
     }
  
+// thêm phòng
+    public void addRoom(String name, String size, String type, String status, String address, String chuHo) {
+        AdminModel.RoomEntry room = new AdminModel.RoomEntry(name, size, type, status, address, chuHo);
+        roomList.add(room);
+
+        // Lưu vào database
+        try (Connection conn = getConnection()) {
+            String sql = "INSERT INTO rooms (name, size, type, status, address, chuHo) VALUES (?, ?, ?, ?, ?, ?)";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, size);
+            ps.setString(3, type);
+            ps.setString(4, status);
+            ps.setString(5, address);
+            ps.setString(6, chuHo);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+private Connection getConnection() throws SQLException {
+    return DatabaseManager.connect();
+}
+
     // Lấy danh sách tên người thuê
     public List<String> getTenantNames() {
         List<String> tenantNames = new ArrayList<>();
@@ -314,13 +341,11 @@ public List<BillEntry> loadBills() {
     // Lấy tên hiển thị cho người dùng
 public javafx.scene.image.Image getAvatarForUser(String username) {
     try {
-        // Nếu có file avatar riêng cho user
         File avatarFile = new File("avatars", username + ".png");
         if (avatarFile.exists()) {
             return new javafx.scene.image.Image(avatarFile.toURI().toString());
         }
-        // Nếu không có, trả về ảnh mặc định trong resources
-        java.net.URL url = getClass().getResource("/images/default-avatar.png");
+        java.net.URL url = getClass().getResource("/images/mac-dinh.jpg");
         if (url != null) {
             return new javafx.scene.image.Image(url.toExternalForm());
         }
@@ -376,8 +401,7 @@ public String getEmail(String username) {
 }
 
 public String getDisplayName(String username) {
-    // Nếu bạn có trường "display_name" trong bảng users thì lấy trường đó,
-    // nếu không thì trả về username hoặc email
+    
     try (Connection conn = DatabaseManager.connect()) {
         PreparedStatement stmt = conn.prepareStatement("SELECT username FROM users WHERE username = ?");
         stmt.setString(1, username);
@@ -407,6 +431,34 @@ public List<String> getAllUsernames() {
 public void deleteAccount(String username) {
     
 }
+
+public Map<String, Map<String, List<String>>> getDiaChiData() {
+    Map<String, Map<String, List<String>>> diaChiData = new HashMap<>();
+    for (Province province : provinces) {
+        Map<String, List<String>> districts = new HashMap<>();
+        for (District district : province.getDistricts()) {
+            districts.put(district.getName(), district.getWards().stream().map(Ward::getName).collect(Collectors.toList()));
+        }
+        diaChiData.put(province.getName(), districts);
+    }
+    return diaChiData;
+}
+
+    public void deleteRoom(RoomEntry room) {
+    try (Connection conn = DatabaseManager.connect()) {
+        String sql = "DELETE FROM rooms WHERE name = ?";
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        pstmt.setString(1, room.getName());
+        pstmt.executeUpdate();
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+}
+
+    public List<AdminModel.RoomEntry> getAllRooms() {
+        return roomList;
+    }
+
 public void deleteAvatarForUser(String username) {
     File avatarFile = new File("avatars", username + ".png");
     if (avatarFile.exists()) {

@@ -7,19 +7,19 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.Scene;
+
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
-import javafx.stage.Stage;
+
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
 import java.util.List;
 
 import com.mysql.cj.x.protobuf.MysqlxCrud.DataModel;
-import com.roommanagement.billing.InvoiceFormController.InvoiceItem;
+
 
 public class InvoiceFormView {
 
@@ -72,7 +72,7 @@ ObservableList<DataModel> data = FXCollections.observableArrayList();
         serviceTypeBox.getItems().addAll("Tiền phòng", "Tiền điện", "Tiền nước", "Tiền dịch vụ");
         serviceTypeBox.setValue("Tiền phòng");
 
-        // Các trường nhập liệu
+        
         TextField txtSoLuong = new TextField();
         txtSoLuong.setPromptText("Số lượng");
 
@@ -85,13 +85,13 @@ ObservableList<DataModel> data = FXCollections.observableArrayList();
         TextField txtDonGia = new TextField();
         txtDonGia.setPromptText("Đơn giá");
 
-        // Ẩn/hiện các trường nhập liệu theo dịch vụ
+        
         serviceTypeBox.setOnAction(e -> {
             String selected = serviceTypeBox.getValue();
             txtSoLuong.setVisible(false);
             txtSoDien.setVisible(false);
             txtKhoiNuoc.setVisible(false);
-            txtDonGia.setVisible(true); // Đơn giá luôn hiện
+            txtDonGia.setVisible(true); 
 
             if ("Tiền phòng".equals(selected) || "Tiền dịch vụ".equals(selected)) {
                 txtSoLuong.setVisible(true);
@@ -103,7 +103,7 @@ ObservableList<DataModel> data = FXCollections.observableArrayList();
                 txtKhoiNuoc.setVisible(true);
             }
         });
-        // Gọi 1 lần để thiết lập ban đầu
+        
         serviceTypeBox.getOnAction().handle(null);
 
         Button btnAddService = new Button("Thêm dịch vụ");
@@ -123,7 +123,7 @@ ObservableList<DataModel> data = FXCollections.observableArrayList();
             InvoiceFormController.InvoiceItem item = new InvoiceFormController.InvoiceItem(
                 selectedService, soLuong, "tháng", soDien, khoiNuoc, donGia
             );
-            updateThanhTien(item); // phải gọi trước khi add vào items
+            updateThanhTien(item); 
             items.add(item);
 
             txtSoLuong.clear();
@@ -144,13 +144,12 @@ ObservableList<DataModel> data = FXCollections.observableArrayList();
             }
         });
 
-        // HBox chứa các trường nhập liệu (luôn giữ thứ tự)
+        
         HBox inputBox = new HBox(10, txtSoLuong, txtSoDien, txtKhoiNuoc, txtDonGia);
 
-        // HBox chứa combobox và nút
         HBox serviceButtons = new HBox(10, serviceTypeBox, btnAddService, btnRemoveService);
 
-        // Khai báo các cột TableView
+        
         TableColumn<InvoiceFormController.InvoiceItem, String> colDichVu = new TableColumn<>("Dịch vụ");
         colDichVu.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().tenDichVu));
         colDichVu.setCellFactory(ComboBoxTableCell.forTableColumn("Tiền phòng", "Tiền điện", "Tiền dịch vụ", "Tiền nước"));
@@ -230,7 +229,6 @@ colThanhTien.setEditable(false);
         return invoicePane;
     }
 
-    // Hàm tính thành tiền cho từng dịch vụ
     public void updateThanhTien(InvoiceFormController.InvoiceItem item) {
     if ("Tiền điện".equals(item.tenDichVu)) {
         item.thanhTien = item.soDien * item.donGia;
@@ -241,7 +239,6 @@ colThanhTien.setEditable(false);
     }
 }
 
-    // Hàm tính tổng cộng tất cả dịch vụ
     public double tinhTongCongTatCaDichVu(ObservableList<InvoiceFormController.InvoiceItem> items) {
         double tong = 0;
         for (InvoiceFormController.InvoiceItem item : items) {
