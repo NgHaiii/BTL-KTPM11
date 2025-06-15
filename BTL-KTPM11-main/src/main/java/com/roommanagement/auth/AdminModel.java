@@ -1,6 +1,8 @@
 package com.roommanagement.auth;
 
 import javafx.beans.property.*;
+import java.util.List;
+import java.util.Objects;
 
 public class AdminModel {
     public static class TenantEntry {
@@ -50,5 +52,133 @@ public class AdminModel {
         public double getAmount() { return amount.get(); }
         public String getDescription() { return description.get(); }
         public void setStatus(String status) { this.status = status; }
+    }
+}
+
+ class Province {
+    private String name;
+    private List<District> districts;
+
+    public Province() {}
+
+    public Province(String name, List<District> districts) {
+        this.name = name;
+        this.districts = districts;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<District> getDistricts() {
+        return districts;
+    }
+
+    public void setDistricts(List<District> districts) {
+        this.districts = districts;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Province)) return false;
+        Province province = (Province) o;
+        return Objects.equals(name, province.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
+    }
+}
+
+ class District {
+    private String name;
+    private List<Ward> wards;
+
+    public District() {}
+
+    public District(String name, List<Ward> wards) {
+        this.name = name;
+        this.wards = wards;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<Ward> getWards() {
+        return wards;
+    }
+
+    public void setWards(List<Ward> wards) {
+        this.wards = wards;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof District)) return false;
+        District district = (District) o;
+        return Objects.equals(name, district.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
+    }
+}
+
+ class Ward {
+    private String name;
+
+    public Ward() {}
+
+    public Ward(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Ward)) return false;
+        Ward ward = (Ward) o;
+        return Objects.equals(name, ward.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 }

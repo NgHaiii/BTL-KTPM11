@@ -13,7 +13,30 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 public class AdminService {
+
+    private List<Province> provinces;
+
+    public AdminService() {
+        try (InputStream is = getClass().getResourceAsStream("/vietnam-provinces.json")) {
+    if (is != null) {
+        String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        provinces = new Gson().fromJson(json, new TypeToken<List<Province>>(){}.getType());
+        System.out.println("Số tỉnh/thành: " + provinces.size());
+    } else {
+        System.err.println("Không tìm thấy file db.json trong resources!");
+        provinces = List.of();
+    }
+} catch (Exception e) {
+    e.printStackTrace();
+    provinces = List.of();
+}
+    }
     // Đăng nhập Admin
     public boolean loginAdmin(String username, String password) {
         try (Connection conn = DatabaseManager.connect()) {
@@ -28,32 +51,8 @@ public class AdminService {
             return false;
         }
     }
-    /*private final InvoiceService invoiceService = new InvoiceService();*/
+    
 
-    // Đăng ký Admin
-    /*public void registerAdmin(String email, String phone, String username, String password, Label lblRegStatus) {
-        try (Connection conn = DatabaseManager.connect()) {
-            String checkSql = "SELECT * FROM users WHERE username = ?";
-            PreparedStatement checkStmt = conn.prepareStatement(checkSql);
-            checkStmt.setString(1, username);
-            ResultSet rs = checkStmt.executeQuery();
-            if (rs.next()) {
-                lblRegStatus.setText("Tên đăng nhập đã tồn tại!");
-                return;
-            }
-            String sql = "INSERT INTO users (email, phone, username, password) VALUES (?, ?, ?, ?)";
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, email);
-            pstmt.setString(2, phone);
-            pstmt.setString(3, username);
-            pstmt.setString(4, password);
-            pstmt.executeUpdate();
-            lblRegStatus.setText("Đăng ký thành công! Bạn có thể đăng nhập.");
-        } catch (SQLException e) {
-            lblRegStatus.setText("Lỗi khi đăng ký: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }*/
     public void registerAdmin(String email, String phone, String username, String password, Label lblRegStatus) {
     try (Connection conn = DatabaseManager.connect()) {
         String checkSql = "SELECT * FROM users WHERE username = ?";
@@ -252,8 +251,7 @@ public List<BillEntry> loadBills() {
             ex.printStackTrace();
         }
     }
-
-
+ 
     // Lấy danh sách tên người thuê
     public List<String> getTenantNames() {
         List<String> tenantNames = new ArrayList<>();
@@ -414,6 +412,29 @@ public void deleteAvatarForUser(String username) {
     if (avatarFile.exists()) {
         avatarFile.delete();
     }
+}
+// lấy địa danh
+public List<String> getAllProvinces() {
+    return provinces.stream().map(Province::getName).toList();
+}
+
+public List<String> getDistrictsByProvince(String provinceName) {
+    return provinces.stream()
+        .filter(p -> p.getName().equals(provinceName))
+        .findFirst()
+        .map(p -> p.getDistricts().stream().map(District::getName).toList())
+        .orElse(List.of());
+}
+
+public List<String> getWardsByDistrict(String provinceName, String districtName) {
+    return provinces.stream()
+        .filter(p -> p.getName().equals(provinceName))
+        .findFirst()
+        .flatMap(p -> p.getDistricts().stream()
+            .filter(d -> d.getName().equals(districtName))
+            .findFirst())
+        .map(d -> d.getWards().stream().map(Ward::getName).toList())
+        .orElse(List.of());
 }
     // Model hóa đơn
     public static class BillEntry {

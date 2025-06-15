@@ -6,16 +6,24 @@ import javafx.collections.ListChangeListener;
 import com.roommanagement.tenant.TenantInfo;
 import java.util.ArrayList;
 import java.util.List;
-
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
 public class InvoiceFormController {
     private final AdminService service;
     private final InvoiceFormView view;
-
     public InvoiceFormController(AdminService service, InvoiceFormView view) {
         this.service = service;
         this.view = view;
         initEvents();
+        
     }
+public void addCell(PdfPTable table, String text, Font font) {
+    PdfPCell cell = new PdfPCell(new Phrase(text, font));
+    table.addCell(cell);
+}
 
     private void initEvents() {
         // Tự động điền thông tin khi chọn người thuê
@@ -40,15 +48,21 @@ public class InvoiceFormController {
     }
 
     private void updateTotal() {
-        double total = 0;
-        for (InvoiceItem item : view.items) {
+    double total = 0;
+    for (InvoiceItem item : view.items) {
+        // Tính thành tiền đúng theo loại dịch vụ
+        if ("Tiền điện".equals(item.tenDichVu)) {
+            item.thanhTien = item.soDien * item.donGia;
+        } else if ("Tiền nước".equals(item.tenDichVu)) {
+            item.thanhTien = item.khoiNuoc * item.donGia;
+        } else {
             item.thanhTien = item.soLuong * item.donGia;
-            total += item.thanhTien;
         }
-        view.tblServices.refresh();
-        view.txtTotal.setText(String.format("%,.0f", total));
+        total += item.thanhTien;
     }
-
+    view.tblServices.refresh();
+    view.txtTotal.setText(String.format("%,.0f", total));
+}
     private void sendInvoice() {
         String tenant = view.cbTenant.getValue();
         String room = view.txtRoom.getText().trim();
@@ -66,21 +80,7 @@ public class InvoiceFormController {
             double tongTien = 0;
             for (InvoiceItem item : view.items) tongTien += item.thanhTien;
 
-            // 1. Xuất file hóa đơn PDF
-            /*String filePath = "hoadon_" + tenant + "_" + System.currentTimeMillis() + ".pdf";
-            exportInvoiceToPDF(filePath, tenant, room, phone, address, chuHo, new ArrayList<>(view.items), tongTien);
 
-            // 2. Lưu thông báo vào database
-            service.sendNotification(tenant, message + " [File hóa đơn: " + filePath + "]", view.lblNotifyStatus);
-
-            view.lblNotifyStatus.setText("Đã gửi hóa đơn và thông báo cho " + tenant + ". File: " + filePath);
-            Platform.runLater(() -> {
-                try {
-                    java.awt.Desktop.getDesktop().open(new java.io.File(filePath));
-                } catch (Exception e) {
-                    // ignore
-                }
-            });*/
             String monthYear = java.time.LocalDate.now().getMonthValue() + "_" + java.time.LocalDate.now().getYear();
 String dirPath = "invoices";
 new java.io.File(dirPath).mkdirs();
@@ -157,23 +157,32 @@ Platform.runLater(() -> {
         info.setSpacingAfter(18f);
         document.add(info);
 
-        com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(5);
-        table.setWidths(new float[]{1.2f, 3.5f, 1.5f, 2f, 2f});
-        table.setWidthPercentage(100);
+        com.itextpdf.text.pdf.PdfPTable table = new com.itextpdf.text.pdf.PdfPTable(7); // Sửa thành 7 cột
+table.setWidths(new float[]{1.2f, 3.5f, 1.5f, 2f, 2f, 2f, 2f}); // Sửa lại số phần tử cho đúng 7 cột
+table.setWidthPercentage(100);
+
 
         addHeaderCell(table, "Số lượng", labelFont);
         addHeaderCell(table, "Nội dung", labelFont);
         addHeaderCell(table, "Đơn vị", labelFont);
+        addHeaderCell(table, "Số điện", labelFont);    // Thêm cột này
+        addHeaderCell(table, "Khối nước", labelFont);  // Thêm cột này
         addHeaderCell(table, "Đơn giá", labelFont);
         addHeaderCell(table, "Thành tiền", labelFont);
 
+
+
+Font cellFont = new Font(bf, 12, Font.NORMAL);
+
         for (InvoiceItem item : items) {
-            addNormalCell(table, String.valueOf(item.soLuong), normalFont, com.itextpdf.text.Element.ALIGN_CENTER);
-            addNormalCell(table, item.tenDichVu, normalFont, com.itextpdf.text.Element.ALIGN_LEFT);
-            addNormalCell(table, item.donVi, normalFont, com.itextpdf.text.Element.ALIGN_CENTER);
-            addNormalCell(table, String.format("%,.0f", item.donGia), normalFont, com.itextpdf.text.Element.ALIGN_RIGHT);
-            addNormalCell(table, String.format("%,.0f", item.thanhTien), normalFont, com.itextpdf.text.Element.ALIGN_RIGHT);
-        }
+    addCell(table, String.valueOf(item.soLuong), cellFont); // Số lượng
+    addCell(table, item.tenDichVu, cellFont);               // Nội dung
+    addCell(table, item.donVi, cellFont);                   // Đơn vị
+    addCell(table, "Tiền điện".equals(item.tenDichVu) ? String.valueOf(item.soDien) : "", cellFont);      // Số điện
+    addCell(table, "Tiền nước".equals(item.tenDichVu) ? String.valueOf(item.khoiNuoc) : "", cellFont);    // Khối nước
+    addCell(table, String.format("%,.0f", item.donGia), cellFont);    // Đơn giá
+    addCell(table, String.format("%,.0f", item.thanhTien), cellFont); // Thành tiền
+}
 
         document.add(table);
 
@@ -206,13 +215,15 @@ Platform.runLater(() -> {
     public String donVi;
     public double donGia;
     public double thanhTien;
-
-    public InvoiceItem(String tenDichVu, int soLuong, String donVi, double donGia) {
+public int khoiNuoc;
+    public InvoiceItem(String tenDichVu, int soLuong, String donVi, int soDien, int khoiNuoc, double donGia) {
         this.tenDichVu = tenDichVu;
         this.soLuong = soLuong;
         this.donVi = donVi;
+        this.soDien = soDien;
+        this.khoiNuoc = khoiNuoc;
         this.donGia = donGia;
-        this.thanhTien = soLuong * donGia;
+        this.thanhTien = 0.0;
     }
 }
 }
