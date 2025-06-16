@@ -1,49 +1,52 @@
-/*package com.roommanagement.database;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-
-public class DatabaseManager { 
-    private static final String URL = "jdbc:mysql://localhost:3306/quanliphongtro";
-    private static final String USER = "root";
-    private static final String PASSWORD = "hai120305";
-    
-    public static Connection connect() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
-    }
-
-    
-    public static void main(String[] args) {
-        try (Connection conn = connect()) {
-            System.out.println("✅ Kết nối MySQL thành công!");
-        } catch (SQLException e) {
-            System.out.println("❌ Kết nối thất bại: " + e.getMessage());
-        }
-    }
-}*/
-
 
 package com.roommanagement.database;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
+import java.io.InputStream;
+
 
 public class DatabaseManager {
 
-    public static Connection connect() {
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            return DriverManager.getConnection(
-                "jdbc:mysql://mysql-24165cb3-nghaiii-205.e.aivencloud.com:18866/defaultdb?ssl-mode=REQUIRED",
-                "avnadmin", "AVNS_QyWkSSdtZ1pLMHRex2n"
-            );
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
-            return null;
+public static Connection connect() {
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver"); // Đảm bảo driver được tải
+
+        // Sử dụng ClassLoader để đọc tệp config.properties
+        Properties prop = new Properties();
+        try (InputStream input = DatabaseManager.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (input == null) {
+                throw new IllegalArgumentException("Không tìm thấy file config.properties!");
+            }
+            prop.load(input);
         }
+
+        String dbUser = prop.getProperty("DB_USER");
+        String dbPassword = prop.getProperty("DB_PASSWORD");
+
+        Connection conn = DriverManager.getConnection(
+            "jdbc:mysql://mysql-24165cb3-nghaiii-205.e.aivencloud.com:18866/defaultdb?ssl-mode=REQUIRED",
+            dbUser, dbPassword
+        );
+
+        if (conn != null) {
+            System.out.println("Database connected successfully!");
+        } else {
+            System.err.println("Failed to connect to database.");
+        }
+
+        return conn;
+    } catch (ClassNotFoundException | SQLException | IOException e) {
+        e.printStackTrace();
+        return null;
     }
+}
+
 
     public void initializeDatabase() {
         Connection conn = DatabaseManager.connect();
