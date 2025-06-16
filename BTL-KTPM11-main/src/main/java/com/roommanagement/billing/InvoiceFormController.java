@@ -37,13 +37,9 @@ public void addCell(PdfPTable table, String text, Font font) {
             }
         });
 
-        // Tự động tính tổng tiền khi thay đổi dịch vụ
         view.items.addListener((ListChangeListener<InvoiceItem>) c -> updateTotal());
         view.tblServices.setItems(view.items);
-
-        // Khi chỉnh sửa số lượng, đơn giá, tự động tính lại thành tiền và tổng tiền
         view.tblServices.setEditable(true);
-
         view.btnSendInvoice.setOnAction(ev -> sendInvoice());
     }
 
@@ -86,22 +82,17 @@ String dirPath = "invoices";
 new java.io.File(dirPath).mkdirs();
 String filePath = dirPath + "/" + tenant + "_" + monthYear + ".pdf";
 
-// Chỉ lưu hóa đơn, không gửi thông báo nữa
 exportInvoiceToPDF(filePath, tenant, room, phone, address, chuHo, new ArrayList<>(view.items), tongTien);
 
-// Thông báo trạng thái lưu hóa đơn
 view.lblNotifyStatus.setText("Đã lưu hóa đơn cho " + tenant + ". File: " + filePath);
 
-// Mở file hóa đơn sau khi lưu (nếu muốn)
 Platform.runLater(() -> {
     try {
         java.awt.Desktop.getDesktop().open(new java.io.File(filePath));
     } catch (Exception e) {
-        // ignore
     }
 });
 
-            // Xóa trắng form
             view.cbTenant.setValue(null);
             view.txtRoom.clear();
             view.txtPhone.clear();
@@ -115,9 +106,6 @@ Platform.runLater(() -> {
             ex.printStackTrace();
         }
     }
-
-
-    // Hàm xuất hóa đơn PDF (dùng iText)
     
     private void exportInvoiceToPDF(
             String filePath,
@@ -131,7 +119,7 @@ Platform.runLater(() -> {
             
     ) throws Exception {
 
-    String fontPath = "c:/windows/fonts/arial.ttf"; // Đường dẫn tới font Unicode
+    String fontPath = "c:/windows/fonts/arial.ttf"; 
     com.itextpdf.text.pdf.BaseFont bf = com.itextpdf.text.pdf.BaseFont.createFont(fontPath, com.itextpdf.text.pdf.BaseFont.IDENTITY_H, com.itextpdf.text.pdf.BaseFont.EMBEDDED);
     com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(bf, 22, com.itextpdf.text.Font.BOLD, new com.itextpdf.text.BaseColor(0, 102, 204));
     com.itextpdf.text.Font labelFont = new com.itextpdf.text.Font(bf, 12, com.itextpdf.text.Font.BOLD);
@@ -165,8 +153,8 @@ table.setWidthPercentage(100);
         addHeaderCell(table, "Số lượng", labelFont);
         addHeaderCell(table, "Nội dung", labelFont);
         addHeaderCell(table, "Đơn vị", labelFont);
-        addHeaderCell(table, "Số điện", labelFont);    // Thêm cột này
-        addHeaderCell(table, "Khối nước", labelFont);  // Thêm cột này
+        addHeaderCell(table, "Số điện", labelFont);    
+        addHeaderCell(table, "Khối nước", labelFont);  
         addHeaderCell(table, "Đơn giá", labelFont);
         addHeaderCell(table, "Thành tiền", labelFont);
 
@@ -175,13 +163,13 @@ table.setWidthPercentage(100);
 Font cellFont = new Font(bf, 12, Font.NORMAL);
 
         for (InvoiceItem item : items) {
-    addCell(table, String.valueOf(item.soLuong), cellFont); // Số lượng
-    addCell(table, item.tenDichVu, cellFont);               // Nội dung
-    addCell(table, item.donVi, cellFont);                   // Đơn vị
-    addCell(table, "Tiền điện".equals(item.tenDichVu) ? String.valueOf(item.soDien) : "", cellFont);      // Số điện
-    addCell(table, "Tiền nước".equals(item.tenDichVu) ? String.valueOf(item.khoiNuoc) : "", cellFont);    // Khối nước
-    addCell(table, String.format("%,.0f", item.donGia), cellFont);    // Đơn giá
-    addCell(table, String.format("%,.0f", item.thanhTien), cellFont); // Thành tiền
+    addCell(table, String.valueOf(item.soLuong), cellFont); 
+    addCell(table, item.tenDichVu, cellFont);               
+    addCell(table, item.donVi, cellFont);                   
+    addCell(table, "Tiền điện".equals(item.tenDichVu) ? String.valueOf(item.soDien) : "", cellFont);      
+    addCell(table, "Tiền nước".equals(item.tenDichVu) ? String.valueOf(item.khoiNuoc) : "", cellFont);  
+    addCell(table, String.format("%,.0f", item.donGia), cellFont);    
+    addCell(table, String.format("%,.0f", item.thanhTien), cellFont); 
 }
 
         document.add(table);
@@ -211,7 +199,7 @@ Font cellFont = new Font(bf, 12, Font.NORMAL);
     public static class InvoiceItem {
     public String tenDichVu;
     public int soLuong = 1;
-    public int soDien = 0; // chỉ dùng cho tiền điện nước
+    public int soDien = 0; 
     public String donVi;
     public double donGia;
     public double thanhTien;

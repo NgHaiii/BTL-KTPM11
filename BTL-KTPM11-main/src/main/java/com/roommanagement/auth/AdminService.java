@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import com.roommanagement.businessaddress.BusinessAddressEntry;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -338,6 +338,65 @@ private Connection getConnection() throws SQLException {
         }
         return bills;
     }
+    // xóa địa chỉ kinh doanh
+    public void deleteBusinessAddress(BusinessAddressEntry entry) {
+    String sql = "DELETE FROM business_addresses WHERE id = ?";
+    try (Connection conn = DatabaseManager.connect();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, entry.getId());
+        stmt.executeUpdate();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+    // Load dữ liệu địa chỉ kinh doanh
+public void addBusinessAddress(String name, String birthday, String phone, String soNha, String address, String province, String district, String ward) {
+    String sql = "INSERT INTO business_addresses (name, birthday, phone, so_nha, address, province, district, ward) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    try (Connection conn = DatabaseManager.connect();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, name);
+        stmt.setString(2, birthday);
+        stmt.setString(3, phone);
+        stmt.setString(4, soNha); // Lưu số nhà vào cột so_nha
+        stmt.setString(5, address);
+        stmt.setString(6, province);
+        stmt.setString(7, district);
+        stmt.setString(8, ward);
+        stmt.executeUpdate();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+    // địa chỉ kinh doanh
+    public List<BusinessAddressEntry> loadBusinessAddresses() {
+    List<BusinessAddressEntry> list = new ArrayList<>();
+    String sql = "SELECT * FROM business_addresses";
+    try (Connection conn = DatabaseManager.connect();
+         PreparedStatement stmt = conn.prepareStatement(sql);
+         ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+            BusinessAddressEntry entry = new BusinessAddressEntry(
+                rs.getInt("id"),
+                rs.getString("name"),
+                rs.getString("birthday"),
+                rs.getString("phone"),
+                rs.getString("so_nha"), 
+                rs.getString("address"),
+                rs.getString("province"),
+                rs.getString("district"),
+                rs.getString("ward")
+            );
+            list.add(entry);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return list;
+}
+
+
+
     // Lấy tên hiển thị cho người dùng
 public javafx.scene.image.Image getAvatarForUser(String username) {
     try {
